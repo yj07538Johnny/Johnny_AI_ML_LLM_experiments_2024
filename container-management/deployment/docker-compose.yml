@@ -1,0 +1,259 @@
+# =============================================================================
+# DOCKER COMPOSE CONFIGURATION
+# =============================================================================
+#
+# PURPOSE:
+#   Defines how to run GPU-enabled containers with proper networking,
+#   volume mounts, and resource constraints.
+#
+# USAGE:
+#   docker-compose up -d              # Start in background
+#   docker-compose down               # Stop and remove
+#   docker-compose logs -f            # View logs
+#   docker-compose ps                 # List running containers
+#
+# CUSTOMIZATION GUIDE:
+#   - Line 40: Image selection
+#   - Line 55: GPU allocation
+#   - Line 75: Port mapping
+#   - Line 95: Volume mounts
+#   - Line 115: Environment variables
+#   - Line 135: Resource limits
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# COMPOSE VERSION
+# -----------------------------------------------------------------------------
+# Version 3.8 supports GPU reservations and most modern features.
+# Version 2.x syntax is deprecated.
+#
+version: "3.8"
+
+# =============================================================================
+# SERVICES
+# =============================================================================
+# Each service becomes a container. You can define multiple services
+# that communicate over Docker networks.
+
+services:
+  # ---------------------------------------------------------------------------
+  # JUPYTER SERVICE
+  # ---------------------------------------------------------------------------
+  jupyter:
+    # -------------------------------------------------------------------------
+    # IMAGE SELECTION
+    # -------------------------------------------------------------------------
+    # Option 1: Use pre-built image from registry
+    image: ghcr.io/your-org/gpu-jupyter:latest
+    
+    # Option 2: Build from local Dockerfile
+    # build:
+    #   context: ./images/gpu-jupyter
+    #   dockerfile: Dockerfile
+    #   args:
+    #     USER_ID: 1000
+    #     GROUP_ID: 1000
+
+    # -------------------------------------------------------------------------
+    # CONTAINER NAMING
+    # -------------------------------------------------------------------------
+    # container_name: Fixed name (only one instance possible)
+    # Without this, Docker generates names like "project_jupyter_1"
+    #
+    container_name: jupyter-${USER:-default}
+
+    # -------------------------------------------------------------------------
+    # GPU CONFIGURATION
+    # -------------------------------------------------------------------------
+    # NVIDIA Container Toolkit must be installed on host.
+    # Test with: docker run --gpus all nvidia/cuda:12.2.0-base nvidia-smi
+    #
+    # Options:
+    #   all        - All GPUs
+    #   device=0   - First GPU only
+    #   device=0,1 - First two GPUs
+    #   count=2    - Any two GPUs
+    #
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # count: all    # Use all available GPUs
+              count: 1        # Use exactly 1 GPU
+              capabilities: [gpu]
+    
+    # Alternative syntax (older Docker versions):
+    # runtime: nvidia
+    # environment:
+    #   - NVIDIA_VISIBLE_DEVICES=all
+
+    # -------------------------------------------------------------------------
+    # PORT MAPPING
+    # -------------------------------------------------------------------------
+    # Format: "HOST_PORT:CONTAINER_PORT"
+    #
+    # SECURITY: 
+    #   - "127.0.0.1:8888:8888" binds only to localhost (more secure)
+    #   - "8888:8888" binds to all interfaces (accessible externally)
+    #
+    # For multi-user deployments, assign different host ports per user:
+    #   User A: 10000:8888
+    #   User B: 10100:8888
+    #
+    ports:
+      - "${JUPYTER_PORT:-8888}:8888"      # Jupyter Lab
+      - "${TENSORBOARD_PORT:-6006}:6006"  # TensorBoard
+
+    # -------------------------------------------------------------------------
+    # VOLUME MOUNTS
+    # -------------------------------------------------------------------------
+    # Format: "HOST_PATH:CONTAINER_PATH:OPTIONS"
+    #
+    # Options:
+    #   ro - read-only
+    #   rw - read-write (default)
+    #
+    # Types of mounts:
+    #   Bind mount: Direct host path (./data:/workspace/data)
+    #   Named volume: Docker-managed (data_volume:/workspace/data)
+    #
+    volumes:
+      # User's workspace - persistent across container restarts
+      - ${WORKSPACE_PATH:-./workspace}:/workspace
+      
+      # Shared datasets - read-only to prevent accidental modification
+      - ${DATASETS_PATH:-./datasets}:/datasets:ro
+      
+      # User's Jupyter config - persists extensions, settings
+      - jupyter_config:/home/jupyter/.jupyter
+
+    # -------------------------------------------------------------------------
+    # ENVIRONMENT VARIABLES
+    # -------------------------------------------------------------------------
+    # Configure container behavior without rebuilding image.
+    #
+    # Sources:
+    #   - Direct values (VAR=value)
+    #   - From .env file (${VAR})
+    #   - From host environment (${VAR:-default})
+    #
+    environment:
+      # Jupyter settings
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN:-}  # Empty = no token (use external auth)
+      
+      # CUDA settings
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-all}
+      
+      # Python settings
+      - PYTHONUNBUFFERED=1
+      
+      # User identification (for logging/audit)
+      - USER_ID=${USER_ID:-unknown}
+      - USER_EMAIL=${USER_EMAIL:-unknown}
+
+    # -------------------------------------------------------------------------
+    # RESOURCE LIMITS
+    # -------------------------------------------------------------------------
+    # Prevent runaway containers from consuming all host resources.
+    #
+    # Memory:
+    #   mem_limit: Hard limit (container killed if exceeded)
+    #   mem_reservation: Soft limit (guaranteed minimum)
+    #
+    # CPU:
+    #   cpus: Number of CPU cores (can be fractional)
+    #   cpu_shares: Relative weight (default 1024)
+    #
+    mem_limit: ${MEM_LIMIT:-32g}
+    mem_reservation: ${MEM_RESERVATION:-8g}
+    cpus: ${CPU_LIMIT:-8}
+    
+    # Shared memory size - required for PyTorch DataLoader with num_workers>0
+    shm_size: ${SHM_SIZE:-2g}
+
+    # -------------------------------------------------------------------------
+    # RESTART POLICY
+    # -------------------------------------------------------------------------
+    # Options:
+    #   no: Never restart (default)
+    #   always: Always restart
+    #   on-failure: Restart only on non-zero exit
+    #   unless-stopped: Restart unless explicitly stopped
+    #
+    restart: unless-stopped
+
+    # -------------------------------------------------------------------------
+    # NETWORKING
+    # -------------------------------------------------------------------------
+    # Connect to named networks for isolation and communication.
+    #
+    networks:
+      - jupyter_network
+
+    # -------------------------------------------------------------------------
+    # HEALTH CHECK
+    # -------------------------------------------------------------------------
+    # Docker monitors container health and can trigger restarts.
+    #
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # -------------------------------------------------------------------------
+    # LOGGING
+    # -------------------------------------------------------------------------
+    # Configure log driver and retention.
+    #
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"   # Rotate logs at 100MB
+        max-file: "5"      # Keep 5 rotated files
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+# Named networks allow service isolation and inter-service communication.
+#
+networks:
+  jupyter_network:
+    driver: bridge
+    # For external network isolation:
+    # internal: true  # No external access
+    
+    # Custom subnet (optional):
+    # ipam:
+    #   config:
+    #     - subnet: 172.28.0.0/16
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+# Named volumes are managed by Docker and persist across container lifecycles.
+#
+volumes:
+  jupyter_config:
+    # Volume driver (default: local)
+    driver: local
+
+# =============================================================================
+# ENVIRONMENT FILE
+# =============================================================================
+# Create a .env file in the same directory with your settings:
+#
+# JUPYTER_PORT=8888
+# TENSORBOARD_PORT=6006
+# WORKSPACE_PATH=/home/user/projects
+# DATASETS_PATH=/data/shared/datasets
+# MEM_LIMIT=64g
+# CPU_LIMIT=16
+# JUPYTER_TOKEN=your-secret-token
+# USER_ID=jsmith
+# USER_EMAIL=jsmith@org.com
+#
+# =============================================================================
