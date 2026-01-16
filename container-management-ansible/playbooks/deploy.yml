@@ -1,0 +1,193 @@
+# =============================================================================
+# DEPLOY CONTAINER PLAYBOOK
+# =============================================================================
+#
+# Deploys a GPU container for the user
+#
+# Required vars (from deploy.sh):
+#   - project_name: User's project name
+#   - user_name: Username
+#   - user_uid: User's UID
+#   - user_gid: User's GID
+#
+# Optional vars:
+#   - container_image: Image to use (default: gpu-jupyter)
+#   - memory_limit: Memory limit (default: 32g)
+#   - gpu_count: GPU allocation (default: all)
+#
+# =============================================================================
+---
+- name: Deploy GPU Container
+  hosts: all
+  gather_facts: yes
+  become: no
+
+  vars:
+    # Container name = project name (unique per user)
+    container_name: "{{ project_name }}"
+    
+    # Project directory
+    project_dir: "{{ projects_base }}/{{ project_name }}"
+    
+    # Image
+    image: "{{ container_registry }}/{{ container_image | default(default_image) }}:{{ default_tag }}"
+    
+    # Resources
+    memory: "{{ memory_limit | default(default_memory) }}"
+    shm_size: "{{ default_shm_size }}"
+    gpus: "{{ gpu_count | default(default_gpus) }}"
+    
+    # Port calculation: base + (UID - 1000) * 100 + offset
+    user_port_offset: "{{ (user_uid | int - 1000) * ports_per_user }}"
+
+  tasks:
+    # -------------------------------------------------------------------------
+    # VALIDATE
+    # -------------------------------------------------------------------------
+    - name: Validate inputs
+      ansible.builtin.assert:
+        that:
+          - project_name is defined
+          - project_name | length > 0
+          - user_name is defined
+          - user_uid is defined
+        fail_msg: "Missing required variables"
+
+    # -------------------------------------------------------------------------
+    # FIND AVAILABLE PORT
+    # -------------------------------------------------------------------------
+    - name: Get running containers
+      ansible.builtin.shell: |
+        docker ps --filter "name=-" --format "{{ '{{' }}.Names{{ '}}' }}: {{ '{{' }}.Ports{{ '}}' }}" | grep "{{ user_name }}\|^{{ project_name }}:" || true
+      register: running_containers
+      changed_when: false
+
+    - name: Find used ports in user's range
+      ansible.builtin.shell: |
+        docker ps --format "{{ '{{' }}.Ports{{ '}}' }}" | grep -oE '{{ port_base + (user_port_offset | int) }}[0-9]{0,2}' | sort -u || true
+      register: used_ports
+      changed_when: false
+
+    - name: Calculate available port
+      ansible.builtin.set_fact:
+        host_port: "{{ port_base + (user_port_offset | int) + idx }}"
+      loop: "{{ range(0, ports_per_user) | list }}"
+      loop_control:
+        index_var: idx
+      when:
+        - host_port is not defined
+        - (port_base + (user_port_offset | int) + idx) | string not in used_ports.stdout
+
+    - name: Show port assignment
+      ansible.builtin.debug:
+        msg: "Assigned port: {{ host_port }}"
+
+    # -------------------------------------------------------------------------
+    # CREATE DIRECTORIES
+    # -------------------------------------------------------------------------
+    - name: Create project directory
+      ansible.builtin.file:
+        path: "{{ project_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Create workspace directory
+      ansible.builtin.file:
+        path: "{{ project_dir }}/workspace"
+        state: directory
+        mode: '0755'
+
+    # -------------------------------------------------------------------------
+    # GENERATE DOCKER COMPOSE
+    # -------------------------------------------------------------------------
+    - name: Create docker-compose.yml
+      ansible.builtin.template:
+        src: docker-compose.yml.j2
+        dest: "{{ project_dir }}/docker-compose.yml"
+        mode: '0644'
+
+    # -------------------------------------------------------------------------
+    # STOP EXISTING (if any)
+    # -------------------------------------------------------------------------
+    - name: Check for existing container
+      ansible.builtin.shell: docker ps -a --filter "name=^{{ container_name }}$" --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: existing
+      changed_when: false
+      failed_when: false
+
+    - name: Stop existing container
+      ansible.builtin.shell: |
+        cd {{ project_dir }}
+        docker compose down || true
+      when: existing.stdout | length > 0
+
+    # -------------------------------------------------------------------------
+    # PULL IMAGE
+    # -------------------------------------------------------------------------
+    - name: Pull container image
+      ansible.builtin.shell: docker pull {{ image }}
+      register: pull_result
+      retries: 2
+      delay: 5
+      until: pull_result.rc == 0
+
+    # -------------------------------------------------------------------------
+    # START CONTAINER
+    # -------------------------------------------------------------------------
+    - name: Start container
+      ansible.builtin.shell: |
+        cd {{ project_dir }}
+        docker compose up -d
+      register: compose_up
+
+    - name: Wait for container to start
+      ansible.builtin.pause:
+        seconds: 5
+
+    # -------------------------------------------------------------------------
+    # GET ACCESS INFO
+    # -------------------------------------------------------------------------
+    - name: Get container status
+      ansible.builtin.shell: docker ps --filter "name={{ container_name }}" --format "{{ '{{' }}.Status{{ '}}' }}"
+      register: container_status
+      changed_when: false
+
+    - name: Get Jupyter token
+      ansible.builtin.shell: |
+        docker logs {{ container_name }} 2>&1 | grep -oE 'token=[a-zA-Z0-9]+' | tail -1 | cut -d= -f2
+      register: jupyter_token
+      changed_when: false
+      failed_when: false
+      retries: 3
+      delay: 2
+      until: jupyter_token.stdout | length > 0
+
+    # -------------------------------------------------------------------------
+    # SUMMARY
+    # -------------------------------------------------------------------------
+    - name: Deployment Summary
+      ansible.builtin.debug:
+        msg: |
+          
+          ═══════════════════════════════════════════════════════════════
+            DEPLOYMENT SUCCESSFUL
+          ═══════════════════════════════════════════════════════════════
+          
+            Project:     {{ project_name }}
+            Container:   {{ container_name }}
+            Status:      {{ container_status.stdout }}
+            
+            Access:
+              URL:       http://{{ inventory_hostname }}:{{ host_port }}
+              Token:     {{ jupyter_token.stdout | default('(check: docker logs ' + container_name + ')') }}
+              
+              Full URL:  http://{{ inventory_hostname }}:{{ host_port }}/?token={{ jupyter_token.stdout | default('TOKEN') }}
+            
+            Workspace:   {{ project_dir }}/workspace
+            
+            Commands:
+              Logs:      ssh {{ inventory_hostname }} docker logs {{ container_name }}
+              Shell:     ssh {{ inventory_hostname }} docker exec -it {{ container_name }} /bin/bash
+              Stop:      ./deploy.sh stop {{ project_name }} {{ inventory_hostname }}
+          
+          ═══════════════════════════════════════════════════════════════

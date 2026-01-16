@@ -1,0 +1,48 @@
+# =============================================================================
+# LIST CONTAINERS PLAYBOOK
+# =============================================================================
+---
+- name: List User Containers
+  hosts: all
+  gather_facts: yes
+  become: no
+
+  tasks:
+    - name: Get containers with managed_by label
+      ansible.builtin.shell: |
+        docker ps -a \
+          --filter "label=managed_by=ansible-container-management" \
+          --filter "label=user={{ user_name }}" \
+          --format "table {{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}\t{{ '{{' }}.Ports{{ '}}' }}"
+      register: containers
+      changed_when: false
+
+    - name: List project directories
+      ansible.builtin.find:
+        paths: "{{ ansible_env.HOME }}/projects"
+        file_type: directory
+        recurse: no
+      register: projects
+
+    - name: Show containers
+      ansible.builtin.debug:
+        msg: |
+          
+          ═══════════════════════════════════════════════════════════════
+            YOUR CONTAINERS ON {{ inventory_hostname }}
+          ═══════════════════════════════════════════════════════════════
+          
+          {{ containers.stdout if containers.stdout else '(no containers running)' }}
+          
+          ───────────────────────────────────────────────────────────────
+            PROJECT DIRECTORIES
+          ───────────────────────────────────────────────────────────────
+          
+          {% for p in projects.files %}
+          - {{ p.path | basename }}
+          {% endfor %}
+          {% if projects.files | length == 0 %}
+          (no projects)
+          {% endif %}
+          
+          ═══════════════════════════════════════════════════════════════

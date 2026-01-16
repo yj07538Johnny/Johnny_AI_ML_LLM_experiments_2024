@@ -1,0 +1,49 @@
+# =============================================================================
+# SHARED VARIABLES
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# CONTAINER REGISTRY
+# -----------------------------------------------------------------------------
+# External (internet access)
+container_registry: "ghcr.io/yj07538johnny"
+
+# Internal (air-gapped) - uncomment and set your internal registry
+# container_registry: "containeryard.internal/your-team"
+
+# Default image
+default_image: "gpu-jupyter"
+default_tag: "latest"
+
+# -----------------------------------------------------------------------------
+# PORT ALLOCATION
+# -----------------------------------------------------------------------------
+# Each user gets ports based on UID: (UID - 1000) * 100 + port_base
+port_base: 10000
+ports_per_user: 100
+
+# Ports exposed by container
+container_internal_ports:
+  jupyter: 8888
+  tensorboard: 6006
+
+# -----------------------------------------------------------------------------
+# RESOURCE DEFAULTS
+# -----------------------------------------------------------------------------
+default_memory: "32g"
+default_shm_size: "2g"
+default_gpus: "all"
+
+# -----------------------------------------------------------------------------
+# DIRECTORIES
+# -----------------------------------------------------------------------------
+# Where user projects are stored on target VM
+projects_base: "{{ ansible_env.HOME }}/projects"
+
+# Shared datasets (read-only mount)
+# datasets_dir: "/data/shared/datasets"
+
+# -----------------------------------------------------------------------------
+# CONTAINER SETTINGS
+# -----------------------------------------------------------------------------
+restart_policy: "unless-stopped"

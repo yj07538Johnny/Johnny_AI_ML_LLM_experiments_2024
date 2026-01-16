@@ -1,0 +1,33 @@
+# =============================================================================
+# REMOVE CONTAINER PLAYBOOK
+# =============================================================================
+---
+- name: Remove Container
+  hosts: all
+  gather_facts: yes
+  become: no
+
+  vars:
+    container_name: "{{ project_name }}"
+    project_dir: "{{ ansible_env.HOME }}/projects/{{ project_name }}"
+
+  tasks:
+    - name: Stop and remove container
+      ansible.builtin.shell: |
+        cd {{ project_dir }} 2>/dev/null && docker compose down --volumes || true
+        docker rm -f {{ container_name }} 2>/dev/null || true
+      changed_when: true
+
+    - name: Remove project directory
+      ansible.builtin.file:
+        path: "{{ project_dir }}"
+        state: absent
+
+    - name: Show result
+      ansible.builtin.debug:
+        msg: |
+          
+          Project '{{ project_name }}' removed.
+          
+          - Container stopped and removed
+          - Project directory deleted: {{ project_dir }}

@@ -1,0 +1,38 @@
+# =============================================================================
+# STOP CONTAINER PLAYBOOK
+# =============================================================================
+---
+- name: Stop Container
+  hosts: all
+  gather_facts: yes
+  become: no
+
+  vars:
+    container_name: "{{ project_name }}"
+    project_dir: "{{ ansible_env.HOME }}/projects/{{ project_name }}"
+
+  tasks:
+    - name: Check container exists
+      ansible.builtin.shell: docker ps -a --filter "name=^{{ container_name }}$" --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: container_check
+      changed_when: false
+
+    - name: Fail if container not found
+      ansible.builtin.fail:
+        msg: "Container '{{ container_name }}' not found"
+      when: container_check.stdout | length == 0
+
+    - name: Stop container
+      ansible.builtin.shell: |
+        cd {{ project_dir }}
+        docker compose stop
+      register: stop_result
+
+    - name: Show result
+      ansible.builtin.debug:
+        msg: |
+          
+          Container '{{ container_name }}' stopped.
+          
+          To restart: ./deploy.sh start {{ project_name }} {{ inventory_hostname }}
+          To remove:  ./deploy.sh remove {{ project_name }} {{ inventory_hostname }}

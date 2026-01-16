@@ -1,0 +1,166 @@
+# =============================================================================
+# SETUP VM PLAYBOOK
+# =============================================================================
+# One-time setup for GPU VMs. Requires sudo.
+#
+# Usage: ./deploy.sh setup <vm-name>
+# =============================================================================
+---
+- name: Setup GPU VM
+  hosts: all
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    # -------------------------------------------------------------------------
+    # PREREQUISITES CHECK
+    # -------------------------------------------------------------------------
+    - name: Check for NVIDIA GPU
+      ansible.builtin.shell: lspci | grep -i nvidia
+      register: nvidia_check
+      changed_when: false
+      failed_when: false
+
+    - name: Warn if no NVIDIA GPU detected
+      ansible.builtin.debug:
+        msg: "WARNING: No NVIDIA GPU detected. Container GPU access may not work."
+      when: nvidia_check.rc != 0
+
+    # -------------------------------------------------------------------------
+    # DOCKER INSTALLATION
+    # -------------------------------------------------------------------------
+    - name: Check if Docker is installed
+      ansible.builtin.command: docker --version
+      register: docker_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install Docker
+      when: docker_check.rc != 0
+      block:
+        - name: Install prerequisites
+          ansible.builtin.apt:
+            name:
+              - apt-transport-https
+              - ca-certificates
+              - curl
+              - gnupg
+              - lsb-release
+            state: present
+            update_cache: yes
+
+        - name: Add Docker GPG key
+          ansible.builtin.apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+
+        - name: Add Docker repository
+          ansible.builtin.apt_repository:
+            repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            state: present
+
+        - name: Install Docker
+          ansible.builtin.apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-compose-plugin
+            state: present
+            update_cache: yes
+
+        - name: Start Docker service
+          ansible.builtin.systemd:
+            name: docker
+            state: started
+            enabled: yes
+
+    # -------------------------------------------------------------------------
+    # NVIDIA CONTAINER TOOLKIT
+    # -------------------------------------------------------------------------
+    - name: Check if NVIDIA Container Toolkit is installed
+      ansible.builtin.command: nvidia-ctk --version
+      register: nvidia_ctk_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install NVIDIA Container Toolkit
+      when: nvidia_ctk_check.rc != 0
+      block:
+        - name: Add NVIDIA GPG key
+          ansible.builtin.apt_key:
+            url: https://nvidia.github.io/nvidia-docker/gpgkey
+            state: present
+
+        - name: Get distribution info
+          ansible.builtin.shell: echo "{{ ansible_distribution | lower }}{{ ansible_distribution_version }}"
+          register: distro
+          changed_when: false
+
+        - name: Add NVIDIA repository
+          ansible.builtin.get_url:
+            url: "https://nvidia.github.io/nvidia-docker/{{ distro.stdout }}/nvidia-docker.list"
+            dest: /etc/apt/sources.list.d/nvidia-docker.list
+            mode: '0644'
+
+        - name: Install NVIDIA Container Toolkit
+          ansible.builtin.apt:
+            name: nvidia-container-toolkit
+            state: present
+            update_cache: yes
+
+        - name: Configure Docker for NVIDIA
+          ansible.builtin.command: nvidia-ctk runtime configure --runtime=docker
+          changed_when: true
+
+        - name: Restart Docker
+          ansible.builtin.systemd:
+            name: docker
+            state: restarted
+
+    # -------------------------------------------------------------------------
+    # USER PERMISSIONS
+    # -------------------------------------------------------------------------
+    - name: Add users to docker group
+      ansible.builtin.user:
+        name: "{{ item }}"
+        groups: docker
+        append: yes
+      loop: "{{ docker_users | default([ansible_user]) }}"
+      when: ansible_user is defined
+
+    # -------------------------------------------------------------------------
+    # VERIFY
+    # -------------------------------------------------------------------------
+    - name: Test Docker
+      ansible.builtin.command: docker run --rm hello-world
+      register: docker_test
+      changed_when: false
+
+    - name: Test GPU access
+      ansible.builtin.command: docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
+      register: gpu_test
+      changed_when: false
+      failed_when: false
+
+    # -------------------------------------------------------------------------
+    # SUMMARY
+    # -------------------------------------------------------------------------
+    - name: Setup Summary
+      ansible.builtin.debug:
+        msg: |
+          
+          ═══════════════════════════════════════════════════════════════
+            VM SETUP COMPLETE: {{ inventory_hostname }}
+          ═══════════════════════════════════════════════════════════════
+          
+          Docker:     {{ 'OK' if docker_test.rc == 0 else 'FAILED' }}
+          GPU Access: {{ 'OK' if gpu_test.rc == 0 else 'FAILED (check NVIDIA drivers)' }}
+          
+          {% if gpu_test.rc != 0 %}
+          GPU access failed. Ensure NVIDIA drivers are installed:
+            sudo apt install nvidia-driver-535
+            sudo reboot
+          {% endif %}
+          
+          ═══════════════════════════════════════════════════════════════

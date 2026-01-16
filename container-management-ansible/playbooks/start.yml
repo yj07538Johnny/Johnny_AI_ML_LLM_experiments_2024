@@ -1,0 +1,43 @@
+# =============================================================================
+# START CONTAINER PLAYBOOK
+# =============================================================================
+---
+- name: Start Container
+  hosts: all
+  gather_facts: yes
+  become: no
+
+  vars:
+    container_name: "{{ project_name }}"
+    project_dir: "{{ ansible_env.HOME }}/projects/{{ project_name }}"
+
+  tasks:
+    - name: Check project directory exists
+      ansible.builtin.stat:
+        path: "{{ project_dir }}/docker-compose.yml"
+      register: compose_file
+
+    - name: Fail if project not found
+      ansible.builtin.fail:
+        msg: "Project '{{ project_name }}' not found at {{ project_dir }}"
+      when: not compose_file.stat.exists
+
+    - name: Start container
+      ansible.builtin.shell: |
+        cd {{ project_dir }}
+        docker compose start
+      register: start_result
+
+    - name: Get container port
+      ansible.builtin.shell: |
+        docker port {{ container_name }} 8888 | cut -d: -f2
+      register: port_info
+      changed_when: false
+
+    - name: Show result
+      ansible.builtin.debug:
+        msg: |
+          
+          Container '{{ container_name }}' started.
+          
+          Access: http://{{ inventory_hostname }}:{{ port_info.stdout }}
