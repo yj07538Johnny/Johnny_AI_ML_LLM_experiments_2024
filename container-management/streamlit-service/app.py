@@ -21,6 +21,13 @@ from typing import Optional, Dict, List
 from dataclasses import dataclass
 import streamlit as st
 
+from remote_deploy import (
+    load_vm_config, deploy_container_remote,
+    create_project_directory, sanitize_project_name,
+    get_container_status_remote, stop_container_remote,
+    list_containers_remote, test_vm_connection, VMConfig
+)
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -296,53 +303,219 @@ def main():
     # === DEPLOY TAB ===
     with tab1:
         st.header("Deploy a New Container")
-        
+
+        # Load VM configuration
+        try:
+            vms = load_vm_config()
+        except Exception as e:
+            st.error(f"Failed to load VM configuration: {e}")
+            vms = []
+
+        # Project Configuration Section
+        st.subheader("Project Configuration")
+
+        with st.container(border=True):
+            proj_col1, proj_col2 = st.columns(2)
+
+            with proj_col1:
+                project_name_raw = st.text_input(
+                    "Project Name",
+                    placeholder="My ML Project",
+                    help="Spaces will be replaced with underscores"
+                )
+
+                # Show sanitized version
+                if project_name_raw:
+                    sanitized_name = sanitize_project_name(project_name_raw)
+                    if sanitized_name != project_name_raw.lower().replace(' ', '_'):
+                        st.caption(f"Will be saved as: `{sanitized_name}`")
+                else:
+                    sanitized_name = ""
+
+            with proj_col2:
+                # VM selector
+                vm_names = [vm.name for vm in vms]
+                selected_vm_name = st.selectbox(
+                    "Target VM",
+                    options=vm_names if vm_names else ["No VMs configured"],
+                    help="Select where to deploy the container"
+                )
+
+                # Get selected VM config
+                selected_vm = next((vm for vm in vms if vm.name == selected_vm_name), None)
+
+            # Root directory (auto-filled from VM, editable)
+            default_root = selected_vm.root_directory if selected_vm else "/tmp"
+            root_directory = st.text_input(
+                "Root Directory",
+                value=default_root,
+                help="Base directory for project folders"
+            )
+
+            # Show project path preview
+            if sanitized_name and root_directory:
+                project_path = f"{root_directory}/{sanitized_name}"
+                st.info(f"**Project Path:** `{project_path}/`")
+                st.caption("Directories created: `workspace/` (read-write), `data/` (read-only)")
+
+        st.divider()
+
         col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Select Image")
-            
-            for img in CONFIG["curated_images"]:
-                with st.container(border=True):
-                    st.markdown(f"**{img['name']}**")
-                    st.text(img["description"])
-                    gpu_badge = "🟢 GPU" if img["gpu"] else "⚪ CPU"
-                    st.text(f"{gpu_badge} | Ports: {', '.join(img['ports'].values())}")
-                    
-                    if st.button(f"Deploy {img['name']}", key=f"deploy_{img['name']}"):
-                        with st.spinner("Deploying container..."):
-                            result = deploy_container(img["name"], user, gpu=img["gpu"])
-                        
-                        if result["success"]:
-                            st.success("✅ Container deployed successfully!")
-                            st.json({
-                                "container": result["container_name"],
-                                "access_urls": {
-                                    desc: f"http://{result['host']}:{port}"
-                                    for desc, port in result["ports"].items()
-                                }
-                            })
-                        else:
-                            st.error(f"❌ Deployment failed: {result['error']}")
-        
+
+        # Define advanced options FIRST so they're available for deployment
         with col2:
             st.subheader("Advanced Options")
-            
+
             memory = st.select_slider(
                 "Memory Limit",
                 options=["8g", "16g", "32g", "64g", "128g"],
                 value="32g",
             )
-            
+
             gpu_enabled = st.checkbox("Enable GPU", value=True)
-            
+
             st.info("""
             **Tips:**
             - GPU containers require NVIDIA drivers on the VM
             - Higher memory limits may require admin approval
             - Your workspace is persisted across container restarts
             """)
-    
+
+            # VM Connection Test
+            st.divider()
+            st.subheader("VM Status")
+
+            if selected_vm:
+                if st.button("Test Connection", key="test_vm_conn"):
+                    with st.spinner(f"Testing connection to {selected_vm.name}..."):
+                        ok, msg = test_vm_connection(selected_vm)
+                    if ok:
+                        st.success(msg)
+                    else:
+                        st.error(msg)
+
+                # Show VM details
+                with st.expander("VM Details"):
+                    st.text(f"Host: {selected_vm.host}")
+                    if selected_vm.ssh_port:
+                        st.text(f"SSH Port: {selected_vm.ssh_port}")
+                        st.text(f"SSH User: {selected_vm.ssh_user}")
+                    else:
+                        st.text("Type: Local deployment")
+                    st.text(f"Root: {selected_vm.root_directory}")
+                    if selected_vm.description:
+                        st.caption(selected_vm.description)
+
+        with col1:
+            st.subheader("Select Image")
+
+            for img in CONFIG["curated_images"]:
+                with st.container(border=True):
+                    st.markdown(f"**{img['name']}**")
+                    st.text(img["description"])
+                    gpu_badge = "🟢 GPU" if img["gpu"] else "⚪ CPU"
+                    st.text(f"{gpu_badge} | Ports: {', '.join(img['ports'].values())}")
+
+                    # Disable button if no project name
+                    deploy_disabled = not sanitized_name or not selected_vm
+
+                    if st.button(
+                        f"Deploy {img['name']}",
+                        key=f"deploy_{img['name']}",
+                        disabled=deploy_disabled
+                    ):
+                        # Create status expander for real-time feedback
+                        with st.status("Deploying container...", expanded=True) as status:
+                            status_messages = []
+
+                            def update_status(msg):
+                                status_messages.append(msg)
+                                st.write(msg)
+
+                            # Step 1: Test VM connection
+                            update_status(f"Connecting to {selected_vm.name}...")
+                            conn_ok, conn_msg = test_vm_connection(selected_vm)
+
+                            if not conn_ok:
+                                status.update(label="Deployment failed", state="error")
+                                st.error(f"Connection failed: {conn_msg}")
+                                continue
+
+                            update_status(f"✅ {conn_msg}")
+
+                            # Step 2: Create project directory
+                            update_status(f"Creating project directory...")
+                            dir_ok, dir_msg, project_path = create_project_directory(
+                                selected_vm,
+                                sanitized_name,
+                                status_callback=update_status
+                            )
+
+                            if not dir_ok:
+                                status.update(label="Deployment failed", state="error")
+                                st.error(f"Directory creation failed: {dir_msg}")
+                                continue
+
+                            update_status(f"✅ {dir_msg}")
+
+                            # Step 3: Deploy container
+                            container_name = f"{sanitized_name}-{img['name']}"
+
+                            # Calculate ports
+                            user_index = abs(hash(user.common_name)) % 500
+                            port_start = CONFIG["user_port_start"] + (user_index * 100)
+
+                            port_mappings = {}
+                            port_offset = 0
+                            for container_port, desc in img.get("ports", {}).items():
+                                host_port = port_start + port_offset
+                                port_mappings[str(host_port)] = container_port
+                                port_offset += 1
+
+                            # Full image path
+                            full_image = f"{CONFIG['registry']}/{img['name']}:{img['tag']}"
+
+                            update_status(f"Deploying {container_name}...")
+                            result = deploy_container_remote(
+                                vm=selected_vm,
+                                project_path=project_path,
+                                image=full_image,
+                                container_name=container_name,
+                                ports=port_mappings,
+                                gpu=img["gpu"],
+                                memory_limit=memory,
+                                user_id=user.common_name,
+                                user_email=user.email,
+                                status_callback=update_status
+                            )
+
+                            if result["success"]:
+                                status.update(label="Deployment complete!", state="complete")
+                                update_status(f"✅ Container {container_name} is running")
+
+                                # Log deployment
+                                log_deployment(user, img["name"], container_name,
+                                             {desc: port for port, desc in zip(port_mappings.keys(), img["ports"].values())})
+
+                                # Show access URLs
+                                st.success("Container deployed successfully!")
+
+                                with st.container(border=True):
+                                    st.markdown("**Access URLs:**")
+                                    for port_desc, container_port in img["ports"].items():
+                                        # Find the host port for this container port
+                                        for host_port, cp in port_mappings.items():
+                                            if cp == container_port:
+                                                url = f"http://{selected_vm.host}:{host_port}"
+                                                st.markdown(f"- **{port_desc}:** [{url}]({url})")
+                                                break
+                            else:
+                                status.update(label="Deployment failed", state="error")
+                                st.error(f"Deployment failed: {result.get('error', 'Unknown error')}")
+
+                    if deploy_disabled and not sanitized_name:
+                        st.caption("Enter a project name to enable deployment")
+
     # === MY CONTAINERS TAB ===
     with tab2:
         st.header("My Running Containers")

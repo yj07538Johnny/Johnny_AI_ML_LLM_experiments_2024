@@ -1,0 +1,41 @@
+# =============================================================================
+# VM CONFIGURATION FOR CONTAINER DEPLOYMENT
+# =============================================================================
+#
+# This file defines target VMs where containers can be deployed.
+# Add your VMs here with their connection details.
+#
+# Fields:
+#   name: Display name in the UI dropdown
+#   host: Hostname or IP address
+#   ssh_port: SSH port (null for local deployment)
+#   ssh_user: SSH username (ignored for local)
+#   root_directory: Base directory for project folders
+#   description: Optional description shown in UI
+#
+# =============================================================================
+
+vms:
+  # Local deployment (no SSH, direct docker commands)
+  - name: "Local Server"
+    host: "localhost"
+    ssh_port: null
+    ssh_user: null
+    root_directory: "/home/jlmorg1/containers"
+    description: "Deploy containers on this machine"
+
+  # Example remote VM - uncomment and configure as needed
+  # - name: "GPU Server 1"
+  #   host: "gpu1.internal"
+  #   ssh_port: 22
+  #   ssh_user: "deploy"
+  #   root_directory: "/data/containers"
+  #   description: "Remote GPU server with 4x A100"
+
+  # Example Vast.ai VM - uncomment and configure
+  # - name: "Vast.ai VM"
+  #   host: "ssh5.vast.ai"
+  #   ssh_port: 12345
+  #   ssh_user: "root"
+  #   root_directory: "/workspace/projects"
+  #   description: "Rented GPU instance"
