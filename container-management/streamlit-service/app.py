@@ -52,7 +52,7 @@ CONFIG = {
     ],
     "user_port_start": 10000,  # Each user gets 100 ports starting from user_index * 100
     "vm_host": os.getenv("VM_HOST", "localhost"),
-    "log_file": "/var/log/container-deployments.log",
+    "log_file": os.path.join(os.path.expanduser("~"), ".container-deployments.log"),
 }
 
 # =============================================================================
