@@ -176,7 +176,8 @@ def deploy_container(
         return {"success": False, "error": f"Unknown image: {image_name}"}
     
     # Get user port range (simplified - in production, use database)
-    user_index = hash(user.common_name) % 1000
+    # Limit to 500 users to keep ports under 65535 (10000 + 500*100 = 60000)
+    user_index = abs(hash(user.common_name)) % 500
     port_start, _ = get_user_port_range(user_index)
     
     # Build docker run command
