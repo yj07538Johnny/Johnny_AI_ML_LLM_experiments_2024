@@ -19,6 +19,17 @@ import subprocess
 from datetime import datetime
 from typing import Optional, Dict, List
 from dataclasses import dataclass
+from pathlib import Path
+
+# Load .env file if present
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+except ImportError:
+    pass  # dotenv not installed, use system env vars
+
 import streamlit as st
 
 from remote_deploy import (
@@ -27,6 +38,10 @@ from remote_deploy import (
     get_container_status_remote, stop_container_remote,
     list_containers_remote, test_vm_connection, VMConfig
 )
+
+# Import database and models
+from database import get_db
+from models import User, Deployment, DeploymentStatus
 
 # =============================================================================
 # CONFIGURATION
@@ -57,9 +72,10 @@ CONFIG = {
             "gpu": False,
         },
     ],
-    "user_port_start": 10000,  # Each user gets 100 ports starting from user_index * 100
+    "user_port_start": 10000,
     "vm_host": os.getenv("VM_HOST", "localhost"),
     "log_file": os.path.join(os.path.expanduser("~"), ".container-deployments.log"),
+    "admin_users": [u.strip() for u in os.getenv("ADMIN_USERS", "").split(",") if u.strip()],
 }
 
 # =============================================================================
@@ -77,47 +93,103 @@ class UserIdentity:
 
 
 def get_user_from_pki() -> Optional[UserIdentity]:
-    """
-    Extract user identity from PKI certificate headers.
-    
-    In production, the reverse proxy (nginx/Apache) validates the certificate
-    and passes the DN components as headers:
-        - SSL_CLIENT_S_DN_CN: Common Name
-        - SSL_CLIENT_S_DN_Email: Email
-        - SSL_CLIENT_S_DN_O: Organization
-        - SSL_CLIENT_S_DN_OU: Organizational Unit
-    """
+    """Extract user identity from PKI certificate headers."""
     # In development, use environment variable override
     if os.getenv("DEV_USER"):
+        username = os.getenv("DEV_USER")
         return UserIdentity(
-            common_name=os.getenv("DEV_USER"),
-            email=f"{os.getenv('DEV_USER')}@dev.local",
+            common_name=username,
+            email=f"{username}@dev.local",
             organization="Development",
             organizational_unit="DataScience",
-            is_admin=os.getenv("DEV_ADMIN", "false").lower() == "true",
+            is_admin=os.getenv("DEV_ADMIN", "false").lower() == "true" or username in CONFIG["admin_users"],
         )
-    
+
     # Production: get from headers (set by reverse proxy)
-    headers = st.context.headers if hasattr(st.context, 'headers') else {}
-    
+    headers = {}
+    try:
+        if hasattr(st, 'context') and hasattr(st.context, 'headers'):
+            headers = st.context.headers
+    except Exception:
+        pass
+
     cn = headers.get("SSL_CLIENT_S_DN_CN") or headers.get("X-SSL-Client-CN")
     if not cn:
         return None
-    
+
     return UserIdentity(
         common_name=cn,
         email=headers.get("SSL_CLIENT_S_DN_Email", f"{cn}@unknown"),
         organization=headers.get("SSL_CLIENT_S_DN_O", "Unknown"),
         organizational_unit=headers.get("SSL_CLIENT_S_DN_OU", "Unknown"),
-        is_admin=cn in CONFIG.get("admin_users", []),
+        is_admin=cn in CONFIG["admin_users"],
+    )
+
+
+def get_or_select_user() -> Optional[UserIdentity]:
+    """
+    Get user from PKI or allow simple username selection.
+    Priority: PKI > DEV_USER > Session Selection
+    """
+    # Try PKI first
+    user = get_user_from_pki()
+    if user:
+        return user
+
+    # Check for simple auth mode
+    if not os.getenv("ENABLE_SIMPLE_AUTH", "false").lower() == "true":
+        return None
+
+    # Simple auth: username selection/entry
+    st.sidebar.markdown("### Login")
+
+    # Get existing users from database
+    db = get_db()
+    existing_users = [u.username for u in db.get_all_users()]
+
+    if existing_users:
+        auth_mode = st.sidebar.radio(
+            "Login method",
+            ["Select existing user", "New user"],
+            key="auth_mode",
+            horizontal=True
+        )
+    else:
+        auth_mode = "New user"
+
+    if auth_mode == "Select existing user" and existing_users:
+        username = st.sidebar.selectbox(
+            "Select user",
+            options=existing_users,
+            key="user_select"
+        )
+    else:
+        username = st.sidebar.text_input(
+            "Username",
+            key="username_input",
+            placeholder="Enter your username"
+        )
+
+    if not username:
+        return None
+
+    # Check if admin
+    is_admin = username in CONFIG["admin_users"]
+
+    return UserIdentity(
+        common_name=username,
+        email=f"{username}@local",
+        organization="Local",
+        organizational_unit="General",
+        is_admin=is_admin,
     )
 
 
 def require_auth() -> UserIdentity:
-    """Require valid PKI authentication or show error."""
-    user = get_user_from_pki()
+    """Require valid authentication or show error."""
+    user = get_or_select_user()
     if not user:
-        st.error("⚠️ Authentication required. Please ensure your CAC/PIV is inserted.")
+        st.info("Please log in using the sidebar.")
         st.stop()
     return user
 
@@ -141,122 +213,49 @@ def run_docker_command(cmd: List[str]) -> subprocess.CompletedProcess:
     )
 
 
-def get_running_containers(user: str = None) -> List[Dict]:
-    """Get list of running containers, optionally filtered by user."""
+def get_running_containers(user: str = None, curated_only: bool = True) -> List[Dict]:
+    """Get list of running containers, optionally filtered by curated images."""
     result = run_docker_command([
-        "ps", "--format", 
+        "ps", "--format",
         '{"name":"{{.Names}}","image":"{{.Image}}","status":"{{.Status}}","ports":"{{.Ports}}"}'
     ])
-    
+
+    curated_image_names = [img["name"] for img in CONFIG["curated_images"]]
+
     containers = []
     for line in result.stdout.strip().split("\n"):
         if line:
             try:
                 container = json.loads(line)
-                if user is None or container["name"].endswith(f"-{user}"):
+                image_name = container["image"].split("/")[-1].split(":")[0]
+                is_curated = any(name in container["name"] or name in image_name
+                                for name in curated_image_names)
+                is_user_container = user and user in container["name"]
+
+                if not curated_only or is_curated or is_user_container:
                     containers.append(container)
             except json.JSONDecodeError:
                 continue
     return containers
 
 
-def deploy_container(
-    image_name: str,
-    user: UserIdentity,
-    gpu: bool = True,
-    memory_limit: str = "32g",
-) -> Dict:
-    """
-    Deploy a container for a user.
-    
-    Returns dict with deployment status and access URLs.
-    """
-    # Generate container name
-    container_name = f"{image_name}-{user.common_name}"
-    
-    # Get image config
-    image_config = next(
-        (img for img in CONFIG["curated_images"] if img["name"] == image_name),
-        None
-    )
-    if not image_config:
-        return {"success": False, "error": f"Unknown image: {image_name}"}
-    
-    # Get user port range (simplified - in production, use database)
-    # Limit to 500 users to keep ports under 65535 (10000 + 500*100 = 60000)
-    user_index = abs(hash(user.common_name)) % 500
-    port_start, _ = get_user_port_range(user_index)
-    
-    # Build docker run command
-    cmd = [
-        "run", "-d",
-        "--name", container_name,
-        "--memory", memory_limit,
-        "--shm-size", "2g",
-        "-e", f"USER_ID={user.common_name}",
-        "-e", f"USER_EMAIL={user.email}",
-    ]
-    
-    # Add GPU flag if requested
-    if gpu and image_config.get("gpu"):
-        cmd.extend(["--gpus", "all"])
-    
-    # Add port mappings
-    port_offset = 0
-    port_mappings = {}
-    for container_port, description in image_config.get("ports", {}).items():
-        host_port = port_start + port_offset
-        cmd.extend(["-p", f"{host_port}:{container_port}"])
-        port_mappings[description] = host_port
-        port_offset += 1
-    
-    # Add volume mounts
-    workspace_path = f"/home/{user.common_name}/workspace"
-    cmd.extend(["-v", f"{workspace_path}:/workspace"])
-    
-    # Add image
-    full_image = f"{CONFIG['registry']}/{image_name}:{image_config['tag']}"
-    cmd.append(full_image)
-    
-    # Stop existing container if running
-    run_docker_command(["stop", container_name])
-    run_docker_command(["rm", container_name])
-    
-    # Deploy
-    result = run_docker_command(cmd)
-    
-    if result.returncode != 0:
-        return {
-            "success": False,
-            "error": result.stderr,
-        }
-    
-    # Log deployment
-    log_deployment(user, image_name, container_name, port_mappings)
-    
-    return {
-        "success": True,
-        "container_name": container_name,
-        "ports": port_mappings,
-        "host": CONFIG["vm_host"],
-    }
-
-
 def stop_container(container_name: str, user: UserIdentity) -> Dict:
     """Stop a user's container."""
-    # Verify container belongs to user
-    if not container_name.endswith(f"-{user.common_name}") and not user.is_admin:
+    curated_image_names = [img["name"] for img in CONFIG["curated_images"]]
+    is_curated = any(name in container_name for name in curated_image_names)
+
+    if not user.is_admin and not is_curated:
         return {"success": False, "error": "Permission denied"}
-    
+
     result = run_docker_command(["stop", container_name])
     if result.returncode != 0:
         return {"success": False, "error": result.stderr}
-    
+
     return {"success": True}
 
 
 def log_deployment(user: UserIdentity, image: str, container: str, ports: Dict):
-    """Log deployment for audit trail."""
+    """Log deployment for audit trail (legacy JSON log)."""
     log_entry = {
         "timestamp": datetime.now().isoformat(),
         "user": user.common_name,
@@ -266,12 +265,168 @@ def log_deployment(user: UserIdentity, image: str, container: str, ports: Dict):
         "container": container,
         "ports": ports,
     }
-    
+
     try:
         with open(CONFIG["log_file"], "a") as f:
             f.write(json.dumps(log_entry) + "\n")
     except Exception as e:
         st.warning(f"Could not write to log: {e}")
+
+
+# =============================================================================
+# ADMIN DASHBOARD
+# =============================================================================
+
+def render_admin_dashboard(user_identity: UserIdentity, db_user: User):
+    """Render the admin dashboard tab."""
+    st.header("Admin Dashboard")
+
+    db = get_db()
+
+    # Statistics Overview
+    stats = db.get_deployment_stats()
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        running = stats["by_status"].get("running", 0)
+        st.metric("Running", running)
+
+    with col2:
+        stopped = stats["by_status"].get("stopped", 0)
+        st.metric("Stopped", stopped)
+
+    with col3:
+        st.metric("Total Users", stats["total_users"])
+
+    with col4:
+        st.metric("Total Deployments", stats["total_deployments"])
+
+    st.divider()
+
+    # Filters
+    st.subheader("All Deployments")
+
+    filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
+
+    with filter_col1:
+        users = db.get_all_users()
+        user_options = ["All Users"] + [u.username for u in users]
+        selected_user_filter = st.selectbox("Filter by User", user_options, key="admin_user_filter")
+
+    with filter_col2:
+        try:
+            vms = load_vm_config()
+            vm_options = ["All VMs"] + [vm.name for vm in vms]
+        except Exception:
+            vm_options = ["All VMs"]
+        selected_vm_filter = st.selectbox("Filter by VM", vm_options, key="admin_vm_filter")
+
+    with filter_col3:
+        status_options = ["All Statuses", "running", "stopped", "error", "unknown"]
+        selected_status_filter = st.selectbox("Filter by Status", status_options, key="admin_status_filter")
+
+    with filter_col4:
+        include_removed = st.checkbox("Include removed", value=False, key="admin_include_removed")
+
+    # Build filters dict
+    filters = {"include_removed": include_removed}
+    if selected_user_filter != "All Users":
+        user_obj = next((u for u in users if u.username == selected_user_filter), None)
+        if user_obj:
+            filters["user_id"] = user_obj.id
+    if selected_vm_filter != "All VMs":
+        filters["vm_name"] = selected_vm_filter
+    if selected_status_filter != "All Statuses":
+        filters["status"] = selected_status_filter
+
+    # Deployments Table
+    deployments = db.get_all_deployments(filters)
+
+    col_refresh, col_health = st.columns([1, 4])
+    with col_refresh:
+        if st.button("Refresh", key="admin_refresh"):
+            st.rerun()
+
+    if not deployments:
+        st.info("No deployments found matching the filters.")
+    else:
+        # Display as table using pandas if available
+        try:
+            import pandas as pd
+
+            df_data = []
+            for dep in deployments:
+                df_data.append({
+                    "ID": dep.id,
+                    "Container": dep.container_name,
+                    "User": dep.username,
+                    "VM": dep.vm_name,
+                    "Image": dep.image_name,
+                    "Status": dep.status.value,
+                    "Created": str(dep.created_at)[:19] if dep.created_at else "",
+                    "Last Check": str(dep.last_health_check)[:19] if dep.last_health_check else "Never",
+                })
+
+            df = pd.DataFrame(df_data)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+        except ImportError:
+            # Fallback without pandas
+            for dep in deployments:
+                with st.container(border=True):
+                    col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+
+                    with col1:
+                        st.markdown(f"**{dep.container_name}**")
+                        st.caption(f"User: {dep.username}")
+
+                    with col2:
+                        st.text(f"VM: {dep.vm_name}")
+                        st.text(f"Image: {dep.image_name}")
+
+                    with col3:
+                        status_icon = {"running": "🟢", "stopped": "🔴", "error": "🟠", "unknown": "⚪"}.get(dep.status.value, "⚪")
+                        st.text(f"Status: {status_icon} {dep.status.value}")
+
+                    with col4:
+                        if dep.status == DeploymentStatus.RUNNING:
+                            if st.button("Stop", key=f"admin_stop_{dep.id}"):
+                                result = stop_container(dep.container_name, user_identity)
+                                if result["success"]:
+                                    db.update_deployment_status(dep.id, DeploymentStatus.STOPPED)
+                                    st.rerun()
+
+    st.divider()
+
+    # User Management Section
+    st.subheader("User Management")
+
+    users = db.get_all_users()
+    if users:
+        try:
+            import pandas as pd
+
+            user_data = []
+            for u in users:
+                user_deployments = db.get_user_deployments(u.id, active_only=True)
+                running_count = len([d for d in user_deployments if d.status == DeploymentStatus.RUNNING])
+                user_data.append({
+                    "Username": u.username,
+                    "Email": u.email or "",
+                    "Admin": "Yes" if u.is_admin else "No",
+                    "Active Containers": running_count,
+                    "Last Login": str(u.last_login)[:19] if u.last_login else "Never",
+                })
+
+            df = pd.DataFrame(user_data)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+        except ImportError:
+            for u in users:
+                st.text(f"- {u.username} {'(Admin)' if u.is_admin else ''}")
+    else:
+        st.info("No users registered yet.")
 
 
 # =============================================================================
@@ -284,22 +439,38 @@ def main():
         page_icon="🐳",
         layout="wide",
     )
-    
-    st.title("🐳 GPU Container Deployment Portal")
-    
+
+    st.title("🐳 Container Deployment Portal")
+
+    # Initialize database
+    db = get_db()
+
     # Authenticate
-    user = require_auth()
-    
+    user_identity = require_auth()
+
+    # Get or create user in database
+    db_user = User(
+        username=user_identity.common_name,
+        email=user_identity.email,
+        organization=user_identity.organization,
+        organizational_unit=user_identity.organizational_unit,
+        is_admin=user_identity.is_admin,
+    )
+    db_user = db.get_or_create_user(db_user)
+
     # Show user info
-    st.sidebar.success(f"✅ Authenticated: {user.common_name}")
-    st.sidebar.text(f"Email: {user.email}")
-    st.sidebar.text(f"OU: {user.organizational_unit}")
-    if user.is_admin:
-        st.sidebar.warning("🔑 Admin Access")
-    
-    # Main tabs
-    tab1, tab2, tab3 = st.tabs(["Deploy", "My Containers", "Help"])
-    
+    st.sidebar.success(f"Logged in: {user_identity.common_name}")
+    st.sidebar.text(f"Email: {user_identity.email}")
+    if user_identity.is_admin:
+        st.sidebar.warning("Admin Access")
+
+    # Main tabs - add Admin tab for admins
+    if user_identity.is_admin:
+        tab1, tab2, tab3, tab4 = st.tabs(["Deploy", "My Containers", "Admin Dashboard", "Help"])
+    else:
+        tab1, tab2, tab3 = st.tabs(["Deploy", "My Containers", "Help"])
+        tab4 = None
+
     # === DEPLOY TAB ===
     with tab1:
         st.header("Deploy a New Container")
@@ -324,7 +495,6 @@ def main():
                     help="Spaces will be replaced with underscores"
                 )
 
-                # Show sanitized version
                 if project_name_raw:
                     sanitized_name = sanitize_project_name(project_name_raw)
                     if sanitized_name != project_name_raw.lower().replace(' ', '_'):
@@ -333,18 +503,14 @@ def main():
                     sanitized_name = ""
 
             with proj_col2:
-                # VM selector
                 vm_names = [vm.name for vm in vms]
                 selected_vm_name = st.selectbox(
                     "Target VM",
                     options=vm_names if vm_names else ["No VMs configured"],
                     help="Select where to deploy the container"
                 )
-
-                # Get selected VM config
                 selected_vm = next((vm for vm in vms if vm.name == selected_vm_name), None)
 
-            # Root directory (auto-filled from VM, editable)
             default_root = selected_vm.root_directory if selected_vm else "/tmp"
             root_directory = st.text_input(
                 "Root Directory",
@@ -352,7 +518,6 @@ def main():
                 help="Base directory for project folders"
             )
 
-            # Show project path preview
             if sanitized_name and root_directory:
                 project_path = f"{root_directory}/{sanitized_name}"
                 st.info(f"**Project Path:** `{project_path}/`")
@@ -362,7 +527,6 @@ def main():
 
         col1, col2 = st.columns(2)
 
-        # Define advanced options FIRST so they're available for deployment
         with col2:
             st.subheader("Advanced Options")
 
@@ -381,7 +545,6 @@ def main():
             - Your workspace is persisted across container restarts
             """)
 
-            # VM Connection Test
             st.divider()
             st.subheader("VM Status")
 
@@ -394,7 +557,6 @@ def main():
                     else:
                         st.error(msg)
 
-                # Show VM details
                 with st.expander("VM Details"):
                     st.text(f"Host: {selected_vm.host}")
                     if selected_vm.ssh_port:
@@ -416,7 +578,6 @@ def main():
                     gpu_badge = "🟢 GPU" if img["gpu"] else "⚪ CPU"
                     st.text(f"{gpu_badge} | Ports: {', '.join(img['ports'].values())}")
 
-                    # Disable button if no project name
                     deploy_disabled = not sanitized_name or not selected_vm
 
                     if st.button(
@@ -424,12 +585,8 @@ def main():
                         key=f"deploy_{img['name']}",
                         disabled=deploy_disabled
                     ):
-                        # Create status expander for real-time feedback
                         with st.status("Deploying container...", expanded=True) as status:
-                            status_messages = []
-
                             def update_status(msg):
-                                status_messages.append(msg)
                                 st.write(msg)
 
                             # Step 1: Test VM connection
@@ -461,8 +618,7 @@ def main():
                             # Step 3: Deploy container
                             container_name = f"{sanitized_name}-{img['name']}"
 
-                            # Calculate ports
-                            user_index = abs(hash(user.common_name)) % 500
+                            user_index = abs(hash(user_identity.common_name)) % 500
                             port_start = CONFIG["user_port_start"] + (user_index * 100)
 
                             port_mappings = {}
@@ -472,7 +628,6 @@ def main():
                                 port_mappings[str(host_port)] = container_port
                                 port_offset += 1
 
-                            # Full image path
                             full_image = f"{CONFIG['registry']}/{img['name']}:{img['tag']}"
 
                             update_status(f"Deploying {container_name}...")
@@ -484,8 +639,8 @@ def main():
                                 ports=port_mappings,
                                 gpu=img["gpu"],
                                 memory_limit=memory,
-                                user_id=user.common_name,
-                                user_email=user.email,
+                                user_id=user_identity.common_name,
+                                user_email=user_identity.email,
                                 status_callback=update_status
                             )
 
@@ -493,17 +648,32 @@ def main():
                                 status.update(label="Deployment complete!", state="complete")
                                 update_status(f"✅ Container {container_name} is running")
 
-                                # Log deployment
-                                log_deployment(user, img["name"], container_name,
+                                # Save to database
+                                deployment = Deployment(
+                                    user_id=db_user.id,
+                                    container_name=container_name,
+                                    container_id=result.get("container_id"),
+                                    vm_name=selected_vm.name,
+                                    vm_host=selected_vm.host,
+                                    project_path=project_path,
+                                    image_name=img["name"],
+                                    image_tag=img.get("tag", "latest"),
+                                    ports=port_mappings,
+                                    memory_limit=memory,
+                                    gpu_enabled=img["gpu"],
+                                    status=DeploymentStatus.RUNNING,
+                                )
+                                db.create_deployment(deployment)
+
+                                # Legacy JSON log
+                                log_deployment(user_identity, img["name"], container_name,
                                              {desc: port for port, desc in zip(port_mappings.keys(), img["ports"].values())})
 
-                                # Show access URLs
                                 st.success("Container deployed successfully!")
 
                                 with st.container(border=True):
                                     st.markdown("**Access URLs:**")
                                     for port_desc, container_port in img["ports"].items():
-                                        # Find the host port for this container port
                                         for host_port, cp in port_mappings.items():
                                             if cp == container_port:
                                                 url = f"http://{selected_vm.host}:{host_port}"
@@ -518,71 +688,87 @@ def main():
 
     # === MY CONTAINERS TAB ===
     with tab2:
-        st.header("My Running Containers")
-        
-        containers = get_running_containers(user.common_name)
-        
-        if not containers:
-            st.info("No running containers. Deploy one from the Deploy tab!")
+        st.header("My Containers")
+
+        # Get from database
+        user_deployments = db.get_user_deployments(db_user.id, active_only=False)
+
+        if not user_deployments:
+            st.info("No containers deployed yet. Deploy one from the Deploy tab!")
         else:
-            for container in containers:
+            for dep in user_deployments:
                 with st.container(border=True):
                     col1, col2, col3 = st.columns([3, 2, 1])
-                    
+
                     with col1:
-                        st.markdown(f"**{container['name']}**")
-                        st.text(f"Image: {container['image']}")
-                    
+                        st.markdown(f"**{dep.container_name}**")
+                        st.caption(f"Image: {dep.image_name} | VM: {dep.vm_name}")
+
                     with col2:
-                        st.text(f"Status: {container['status']}")
-                        st.text(f"Ports: {container['ports']}")
-                    
+                        status_icon = {"running": "🟢", "stopped": "🔴", "error": "🟠", "unknown": "⚪", "removed": "⚫"}.get(dep.status.value, "⚪")
+                        st.text(f"Status: {status_icon} {dep.status.value}")
+                        if dep.ports:
+                            ports_str = ", ".join(dep.ports.keys())
+                            st.caption(f"Ports: {ports_str}")
+
                     with col3:
-                        if st.button("Stop", key=f"stop_{container['name']}"):
-                            result = stop_container(container["name"], user)
-                            if result["success"]:
-                                st.success("Stopped")
-                                st.rerun()
-                            else:
-                                st.error(result["error"])
-        
-        if st.button("🔄 Refresh"):
+                        if dep.status == DeploymentStatus.RUNNING:
+                            if st.button("Stop", key=f"stop_{dep.id}"):
+                                result = stop_container(dep.container_name, user_identity)
+                                if result["success"]:
+                                    db.update_deployment_status(dep.id, DeploymentStatus.STOPPED)
+                                    st.success("Stopped")
+                                    st.rerun()
+                                else:
+                                    st.error(result["error"])
+
+        if st.button("🔄 Refresh", key="my_containers_refresh"):
             st.rerun()
-    
+
+    # === ADMIN DASHBOARD TAB ===
+    if user_identity.is_admin and tab4:
+        with tab4:
+            render_admin_dashboard(user_identity, db_user)
+
     # === HELP TAB ===
-    with tab3:
+    help_tab = tab4 if not user_identity.is_admin else tab3
+    if not user_identity.is_admin:
+        help_tab = tab3
+
+    with (tab4 if user_identity.is_admin else tab3):
         st.header("Help & Documentation")
-        
+
         st.markdown("""
         ### Quick Start
-        
-        1. Select an image from the **Deploy** tab
-        2. Click the **Deploy** button
-        3. Copy the access URL and open in your browser
-        4. Your workspace is automatically mounted at `/workspace`
-        
+
+        1. Enter a project name
+        2. Select an image from the **Deploy** tab
+        3. Click the **Deploy** button
+        4. Copy the access URL and open in your browser
+        5. Your workspace is automatically mounted at `/workspace`
+
         ### Available Images
-        
+
         | Image | Description | GPU |
         |-------|-------------|-----|
-        | gpu-jupyter | Full ML stack with Jupyter Lab | ✅ |
-        | gpu-pytorch | PyTorch-focused environment | ✅ |
-        | ml-cpu | Lightweight CPU-only environment | ❌ |
-        
+        | gpu-jupyter | Full ML stack with Jupyter Lab | Yes |
+        | gpu-pytorch | PyTorch-focused environment | Yes |
+        | ml-cpu | Lightweight CPU-only environment | No |
+
         ### FAQ
-        
+
         **Q: How do I save my work?**
-        A: Everything in `/workspace` is persisted to your home directory.
-        
+        A: Everything in `/workspace` is persisted to your project directory.
+
         **Q: Can I install additional packages?**
         A: Yes, use `pip install --user <package>` or create a virtual environment.
-        
+
         **Q: My container was stopped unexpectedly?**
         A: Check if you exceeded memory limits. Contact admin for higher limits.
-        
+
         ### Support
-        
-        Contact: container-support@your-org.com
+
+        Contact your system administrator for help.
         """)
 
 
