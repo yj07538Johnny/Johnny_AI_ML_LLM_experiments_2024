@@ -1,0 +1,22 @@
+# Datalake Feature Extraction Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core data processing
+pandas>=2.0.0
+numpy>=1.24.0
+pyarrow>=14.0.0
+
+# Database
+duckdb>=0.9.0
+
+# Deep learning
+torch>=2.0.0
+
+# ML utilities
+scikit-learn>=1.3.0
+
+# Configuration
+pyyaml>=6.0
+
+# Optional: for Word2Vec training (if needed)
+# gensim>=4.3.0

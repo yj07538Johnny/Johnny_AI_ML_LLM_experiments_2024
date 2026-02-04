@@ -1,0 +1,87 @@
+# Example configuration for run_all_extractors.py
+# Copy this file to config.yaml and modify for your data
+
+# Column mappings: embedding_column -> {type, source_col}
+# Types: narrative, ngram, phrase
+
+columns:
+  # Narrative text embedding
+  narrative_embedding:
+    type: narrative
+    source_col: narrative
+
+  # N-gram embeddings (1-10, then 10-100 by 10s)
+  ngram_1_embedding:
+    type: ngram
+    source_col: ngram_1
+  ngram_2_embedding:
+    type: ngram
+    source_col: ngram_2
+  ngram_3_embedding:
+    type: ngram
+    source_col: ngram_3
+  ngram_4_embedding:
+    type: ngram
+    source_col: ngram_4
+  ngram_5_embedding:
+    type: ngram
+    source_col: ngram_5
+  ngram_6_embedding:
+    type: ngram
+    source_col: ngram_6
+  ngram_7_embedding:
+    type: ngram
+    source_col: ngram_7
+  ngram_8_embedding:
+    type: ngram
+    source_col: ngram_8
+  ngram_9_embedding:
+    type: ngram
+    source_col: ngram_9
+  ngram_10_embedding:
+    type: ngram
+    source_col: ngram_10
+  ngram_20_embedding:
+    type: ngram
+    source_col: ngram_20
+  ngram_30_embedding:
+    type: ngram
+    source_col: ngram_30
+  ngram_40_embedding:
+    type: ngram
+    source_col: ngram_40
+  ngram_50_embedding:
+    type: ngram
+    source_col: ngram_50
+  ngram_60_embedding:
+    type: ngram
+    source_col: ngram_60
+  ngram_70_embedding:
+    type: ngram
+    source_col: ngram_70
+  ngram_80_embedding:
+    type: ngram
+    source_col: ngram_80
+  ngram_90_embedding:
+    type: ngram
+    source_col: ngram_90
+  ngram_100_embedding:
+    type: ngram
+    source_col: ngram_100
+
+  # Phrase embeddings (add your phrase types here)
+  noun_phrases_embedding:
+    type: phrase
+    source_col: noun_phrases
+  verb_phrases_embedding:
+    type: phrase
+    source_col: verb_phrases
+
+# Training settings
+training:
+  num_epochs: 50
+  batch_size: 32
+  learning_rate: 0.001
+
+# Tag column name
+tag_column: MOE_MOP_TAG_COL
