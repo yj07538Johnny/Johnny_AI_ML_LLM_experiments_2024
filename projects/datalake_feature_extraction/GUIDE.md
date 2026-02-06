@@ -8,10 +8,11 @@ A complete guide to using CNN-based feature extraction for MOE/MOP tag classific
 2. [Installation](#installation)
 3. [Data Format Requirements](#data-format-requirements)
 4. [Script Reference](#script-reference)
-5. [Complete Workflow Example](#complete-workflow-example)
-6. [Customizing for Your Data](#customizing-for-your-data)
-7. [Understanding the CNN Model](#understanding-the-cnn-model)
-8. [Troubleshooting](#troubleshooting)
+5. [Detection Workflow (Recommended)](#detection-workflow-recommended)
+6. [Complete Workflow Example](#complete-workflow-example)
+7. [Customizing for Your Data](#customizing-for-your-data)
+8. [Understanding the CNN Model](#understanding-the-cnn-model)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -295,6 +296,188 @@ python run_all_extractors.py \
 | `--config, -c` | No | YAML config file with column mappings |
 | `--save-models` | No | Directory to save all trained models |
 | `--only-type` | No | Only process: `narrative`, `ngram`, or `phrase` |
+
+---
+
+## Detection Workflow (Recommended)
+
+This is the recommended workflow for extracting MOE/MOP features from prepared training data.
+
+### Understanding Detection vs Classification
+
+**Key Insight**: This is a **detection** problem, not binary classification.
+
+- **MOE**: External customer has achievement
+- **MOP**: Internal organization has achievement
+- **Neither**: Most content (not relevant to performance/effectiveness)
+
+Most paragraphs are "neither" - they don't rise to detectable levels of MOE or MOP content. The goal is to find the signal in the noise.
+
+### The Two-Phase Workflow
+
+```
+PHASE 1: Learn Features from Training Data
+==========================================
+
+filtered_df.parquet          extract_predictive_features.py           features_df.parquet
+     (input)            -->                                      -->      (output)
+
+- n-gram columns             1. Load filtered_df                  - feature_text
+- phrase columns             2. Train detection models            - feature_type (ngram/phrase)
+- vector columns             3. Compute detection scores          - source_col
+- tag column (MOE/MOP)       4. Extract above threshold           - detection_score
+                             5. Aggregate discriminative          - moe_count, mop_count
+                                                                  - discriminative_score
+                                                                  - dominant_class
+
+
+PHASE 2: Apply to New Data (Future)
+===================================
+
+customer_feedback.parquet + features_df.parquet --> predictions.parquet
+```
+
+### Input Requirements: filtered_df
+
+Your `filtered_df.parquet` must contain:
+
+| Column Pattern | Example | Description |
+|---------------|---------|-------------|
+| N-gram columns | `2-grams`, `5-grams`, `10-grams` | Lists of n-gram text |
+| Phrase columns | `noun_phrases`, `verb_phrases` | Lists of phrase text |
+| Vector columns | `vector_2_grams`, `vector_noun_phrases` | Lists of embedding vectors |
+| Tag column | `Narratives_sim_top_tag` | MOE, MOP, or empty/null |
+
+### Running Feature Extraction
+
+```bash
+python extract_predictive_features.py \
+    --input filtered_df.parquet \
+    --features-output features_df.parquet \
+    --results-output results_with_scores.parquet \
+    --threshold 0.5 \
+    --tag-col Narratives_sim_top_tag
+```
+
+**Arguments:**
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `--input, -i` | Yes | - | Input parquet (filtered_df with features/vectors) |
+| `--features-output, -f` | Yes | - | Output parquet for extracted features |
+| `--results-output, -r` | No | - | Output parquet with detection scores added |
+| `--tag-col` | No | `Narratives_sim_top_tag` | Tag column name |
+| `--threshold, -t` | No | 0.5 | Detection score threshold |
+| `--epochs` | No | 20 | Training epochs per column |
+| `--max-len` | No | 100 | Max sequence length |
+
+### Output: features_df
+
+The `features_df.parquet` contains discriminative features:
+
+| Column | Description |
+|--------|-------------|
+| `feature_text` | The n-gram or phrase text |
+| `feature_type` | `ngram` or `phrase` |
+| `source_col` | Original column name (e.g., `5-grams`, `noun_phrases`) |
+| `avg_score` | Average detection score |
+| `max_score` | Maximum detection score |
+| `total_count` | How many times this feature appeared |
+| `moe_count` | Appearances in MOE-tagged rows |
+| `mop_count` | Appearances in MOP-tagged rows |
+| `moe_ratio` | Fraction associated with MOE |
+| `mop_ratio` | Fraction associated with MOP |
+| `discriminative_score` | How strongly it favors one class (0-1) |
+| `dominant_class` | MOE or MOP |
+
+### Analyzing features_df
+
+```python
+import pandas as pd
+
+# Load extracted features
+features = pd.read_parquet('features_df.parquet')
+
+# Top MOE-predictive features
+moe_features = features[features['dominant_class'] == 'MOE']
+moe_features = moe_features.sort_values('discriminative_score', ascending=False)
+print("Top MOE indicators:")
+print(moe_features[['feature_text', 'discriminative_score', 'avg_score']].head(20))
+
+# Top MOP-predictive features
+mop_features = features[features['dominant_class'] == 'MOP']
+mop_features = mop_features.sort_values('discriminative_score', ascending=False)
+print("\nTop MOP indicators:")
+print(mop_features[['feature_text', 'discriminative_score', 'avg_score']].head(20))
+
+# Features by type
+print("\nFeature counts by type:")
+print(features.groupby('feature_type').size())
+
+# Features by source column
+print("\nFeature counts by source:")
+print(features.groupby('source_col').size().sort_values(ascending=False))
+```
+
+### Output: results_df (Optional)
+
+If you specify `--results-output`, you get the original data with detection scores added:
+
+| New Column | Description |
+|------------|-------------|
+| `{col}_detection_score` | List of scores aligned with original tokens |
+
+Example:
+```python
+# Row 0:
+#   5-grams: ["achieved goal", "goal exceeded", "exceeded expectations"]
+#   5-grams_detection_score: [0.82, 0.91, 0.78]
+```
+
+### Column Statistics
+
+The script also outputs `column_stats.json`:
+
+```json
+[
+  {
+    "column": "5-grams",
+    "type": "ngram",
+    "detected_mean": 0.4521,
+    "neither_mean": 0.1823,
+    "separation": 0.2698
+  },
+  {
+    "column": "noun_phrases",
+    "type": "phrase",
+    "detected_mean": 0.3892,
+    "neither_mean": 0.1567,
+    "separation": 0.2325
+  }
+]
+```
+
+Higher `separation` = better discriminative power for that column type.
+
+### Advanced: Using learn_moe_mop_features.py
+
+For a more comprehensive workflow with model saving:
+
+```bash
+python learn_moe_mop_features.py \
+    --input filtered_df.parquet \
+    --output-dir learned_features/ \
+    --tag-col Narratives_sim_top_tag \
+    --threshold 0.5
+```
+
+This saves:
+- `learned_features/training_results.parquet` - Data with detection scores
+- `learned_features/model_metadata.json` - Model performance stats
+- `learned_features/discriminative_patterns.json` - Top 500 patterns
+- `learned_features/thresholds.json` - Suggested/conservative/aggressive thresholds
+- `learned_features/config.json` - Configuration for application phase
+- `learned_features/model_*.pt` - Trained PyTorch models
 
 ---
 
