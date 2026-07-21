@@ -28,9 +28,9 @@ the `bart-base` size; that has been corrected.)
 ## Building
 
 The two design specs and the IEEE paper compile with `pdflatex` (the classifier
-and code-mining papers use `IEEEtran`). The `model-management` and
-`code-mining` PDFs here are the compiled artifacts; the classifier PDF should be
-regenerated from its `.tex` after the dimension correction.
+and code-mining papers use `IEEEtran`). All three compiled PDFs are included
+alongside their `.tex` sources and were produced from the corrected sources
+(the classifier PDF reflects the 1024-dimension fix).
 
 ## Author
 
