@@ -1,0 +1,7 @@
+# Model weights are provided at build/run time via a mount — don't commit them.
+model_artifacts/
+.hf_cache/
+
+__pycache__/
+*.pyc
+.pytest_cache/

@@ -1,0 +1,16 @@
+# Service
+fastapi>=0.110,<1
+uvicorn[standard]>=0.29,<1
+pydantic>=2.6,<3
+requests>=2.31
+
+# Dataframe / Parquet transport
+pandas>=2.0
+pyarrow>=15.0
+
+# Model (DistilBART-MNLI zero-shot). transformers 5.x has breaking pipeline
+# changes (see project failure history) — pin to the 4.x line.
+transformers>=4.38,<5
+# CPU by default. For a smaller CPU-only image, install torch from the CPU
+# index instead:  pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.2,<2.8

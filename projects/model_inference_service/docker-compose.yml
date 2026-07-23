@@ -1,0 +1,34 @@
+services:
+  inference:
+    build: .
+    image: model-inference-service:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # --- point the API at your model (a file location) ---
+      MODEL_PATH: /models/distilbart-mnli
+      MODEL_TASK: zero-shot-classification
+      # Default zero-shot labels (a request may override). Comma-separated.
+      MODEL_CANDIDATE_LABELS: ""
+      MODEL_HYPOTHESIS_TEMPLATE: "This example is {}."
+      MODEL_DEVICE: "auto"          # auto -> GPU if visible, else CPU
+      MODEL_BATCH_SIZE: "16"
+    volumes:
+      # Bind-mount YOUR model directory into the container at MODEL_PATH.
+      # Left side = a path on the host holding the DistilBART-MNLI snapshot.
+      - ./model_artifacts/distilbart-mnli:/models/distilbart-mnli:ro
+    restart: unless-stopped
+
+    # --- GPU (optional) ---------------------------------------------------
+    # The base image is CPU-only. For P100 inference, switch to a CUDA base
+    # image in the Dockerfile and uncomment below. On this host the display
+    # GPU is already excluded via CUDA_VISIBLE_DEVICES.
+    # environment:
+    #   NVIDIA_VISIBLE_DEVICES: "0"
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]

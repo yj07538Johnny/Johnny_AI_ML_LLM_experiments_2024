@@ -1,0 +1,7 @@
+model_artifacts/
+.hf_cache/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+README.md
