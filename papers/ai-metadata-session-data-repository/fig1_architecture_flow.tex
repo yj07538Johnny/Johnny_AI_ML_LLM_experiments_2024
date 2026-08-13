@@ -1,0 +1,29 @@
+% Figure F1 --- the architecture as a simple left-to-right flow.
+% Included from main.tex via \resizebox{\textwidth}{!}{\input{fig1_architecture_flow}}.
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, align=center, minimum height=1.25cm,
+              text width=2.4cm, font=\scriptsize, fill=black!3},
+  meta/.style={draw, rounded corners, align=center, minimum height=0.95cm,
+               text width=2.7cm, font=\scriptsize, fill=black!3},
+  arr/.style={-{Latex[length=2mm]}, thick, black!70},
+  lbl/.style={font=\scriptsize\itshape, text=black!55},
+  node distance=6mm and 13mm
+]
+\node[box] (sys) {\textbf{Instrumented AI systems}\\[1pt]each serves a community of purpose};
+\node[box, right=of sys] (scr) {\textbf{Session content repository}\\[1pt]prompts, turns, context; channels; detection, risk, tagging enacted; archived};
+\node[meta, right=15mm of scr] (m2) {Hallucination \& risk metadata};
+\node[meta, above=of m2] (m1) {Performance metadata};
+\node[meta, below=of m2] (m3) {Session-continuity metadata};
+\node[box, right=15mm of m2] (out) {\textbf{Outcome \& risk repository}\\[1pt]outcomes, risks, violations, insider threat};
+\node[box, right=of out] (rep) {\textbf{Outcome \& performance reporting}\\[1pt]organizational and corporate};
+\node[draw, dashed, rounded corners, black!45, fit=(m1)(m2)(m3), inner sep=3.5mm,
+      label={[lbl]above:segregated by sensitivity}] (mg) {};
+\draw[arr] (sys) -- (scr);
+\draw[arr] (scr.east) -- (m1.west);
+\draw[arr] (scr.east) -- (m2.west);
+\draw[arr] (scr.east) -- (m3.west);
+\draw[arr] (m1.east) -- (out.west);
+\draw[arr] (m2.east) -- (out.west);
+\draw[arr] (m3.east) -- (out.west);
+\draw[arr] (out) -- (rep);
+\end{tikzpicture}

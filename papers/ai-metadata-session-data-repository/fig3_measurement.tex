@@ -1,0 +1,25 @@
+% Figure F3 --- the measurement framework: layered exogenous objectives, measure
+% families per layer, rolled up over the record. \resizebox to \textwidth in main.tex.
+\begin{tikzpicture}[
+  band/.style={draw, rounded corners, align=center, minimum height=0.95cm,
+               font=\scriptsize, fill=black!3},
+  base/.style={draw, rounded corners, align=center, minimum height=0.8cm,
+               text width=9.4cm, font=\scriptsize, fill=black!6},
+  arr/.style={-{Latex[length=2mm]}, thick, black!70},
+  lbl/.style={font=\scriptsize\itshape, text=black!55}
+]
+\node[band, text width=8.2cm] (wf) at (5,0.2)
+     {\textbf{Team / workflow} \; local objectives\\
+      \textbf{MOP}: latency, availability, tokens, cost};
+\node[band, text width=6.6cm] (org) at (5,1.75)
+     {\textbf{Organization / division} \; operational objectives\\
+      \textbf{MOE}: task success, rework, acceptance, escalation;\\
+      workforce and model acumen; trust-gap; CX};
+\node[band, text width=4.6cm] (corp) at (5,3.35)
+     {\textbf{Corporation} \; strategic objectives\\
+      \textbf{KPI}: portfolio ROI; human-capital multiplier};
+\node[base] (rec) at (5,-1.0)
+     {Session and outcome record (Section~\ref{sec:datamodel}); every measure is computed over it};
+\draw[arr] (rec) -- (wf);
+\draw[arr] (9.9,-0.2) -- node[right,lbl]{roll-up} (9.9,3.35);
+\end{tikzpicture}

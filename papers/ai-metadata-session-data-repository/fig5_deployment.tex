@@ -1,0 +1,32 @@
+% Figure F5 --- client deployment: instrumentation points feeding the repository,
+% with the health-and-availability monitor. \resizebox to \textwidth in main.tex.
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, align=center, minimum height=0.9cm,
+              text width=2.2cm, font=\scriptsize, fill=black!3},
+  surf/.style={draw, rounded corners, align=center, minimum height=0.8cm,
+               text width=2.4cm, font=\scriptsize, fill=black!3},
+  arr/.style={-{Latex[length=2mm]}, thick, black!70},
+  obs/.style={-{Latex[length=1.6mm]}, dashed, black!55},
+  lbl/.style={font=\scriptsize\itshape, text=black!55}
+]
+% AI-use surfaces (left)
+\node[surf] (su1) at (0,2.2) {API gateway / proxy};
+\node[surf] (su2) at (0,1.1) {agent-framework hooks};
+\node[surf] (su3) at (0,0.0) {chat and IDE connectors};
+\node[lbl] at (0,3.0) {AI-use surfaces};
+% pipeline
+\node[box] (cap) at (3.5,1.1) {\textbf{Capture}\\instrumentation};
+\node[box] (repo) at (6.6,1.1) {\textbf{Repository}\\(Fig.~\ref{fig:arch})};
+\node[box] (rep) at (9.7,1.1) {\textbf{Reporting}\\dashboards};
+\draw[arr] (su1) -- (cap);
+\draw[arr] (su2) -- (cap);
+\draw[arr] (su3) -- (cap);
+\draw[arr] (cap) -- node[above,lbl]{collect \& store} (repo);
+\draw[arr] (repo) -- node[above,lbl]{aggregate \& report} (rep);
+% health & availability band
+\node[draw, dashed, rounded corners, fill=black!3, align=center, text width=10.4cm,
+      minimum height=0.75cm, font=\scriptsize] (hb) at (5.3,-1.25)
+     {\textbf{Health \& availability} --- watches capture, storage, and reporting;
+      feeds operational monitoring and value modeling};
+\draw[obs] (hb.north) -- (repo.south);
+\end{tikzpicture}
