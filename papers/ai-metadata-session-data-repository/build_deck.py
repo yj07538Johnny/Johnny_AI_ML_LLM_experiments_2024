@@ -178,6 +178,9 @@ def build(figs):
     p3 = tf.add_paragraph(); p3.space_before = Pt(18); r3 = p3.add_run()
     r3.text = "Johnny Morgan  |  UMBC Department of Information Systems"
     r3.font.size = Pt(15); r3.font.color.rgb = MUT; r3.font.name = "Calibri"
+    p4 = tf.add_paragraph(); p4.space_before = Pt(6); r4 = p4.add_run()
+    r4.text = "Proposed for development and adoption by [Sponsoring Organization], mission sponsor"
+    r4.font.size = Pt(13); r4.font.color.rgb = ACCENT; r4.font.name = "Calibri"; r4.font.italic = True
     add_notes(s, """
 Thank you. The argument I want to leave you with is one sentence: you cannot manage what you cannot see, and seeing how this organization uses generative AI requires capturing that use before we know what we will need to ask of it. Everything else follows from that. Over the next few minutes I will show the problem we are exposed to today, why the fix has to be a record and not a dashboard, the architecture that holds that record, and what it unlocks: measurable return, detectable and mitigatable harm, and a defensible account when something goes wrong. This is a proposal and a theory of operation. I am not reporting results; I am asking us to build the substrate that makes results measurable.
 """)
@@ -202,6 +205,35 @@ Adoption is running ahead of management. A model is already drafting contract cl
            B("The people and the model: workforce skill, and the model's own drift over time")],
           notes="""
 Here is the concrete test. A manager accountable for an AI deployment would want to establish each of these, and today usually cannot. What do we even have deployed, and at what version. How much are we using it and what does it cost. Is it actually doing useful work. How often does it produce something wrong, and does that wrong thing spread. Does quality decay as a session gets long. And how skillfully is our workforce using it, while the model itself shifts underneath us. The instinct is to answer these by adding metrics. That instinct fails, for a reason I will give on the next slide: the failures that matter most are the ones nobody thought to declare in advance.
+""")
+
+    # PROPOSAL: TWO REPOSITORIES (fig1) ------------------------------------
+    slide("What we propose: two repositories",
+          [B("A content repository: the AI session data itself, preserved as the system of record"),
+           B("A metadata repository: everything derived from that content, to manage the AI and prove its return"),
+           B("Purpose: give the organization the inventory, utilization, performance, and ROI it needs to manage and justify its AI investment")],
+          image="fig1",
+          notes="""
+This is the proposal, and I want it on the table before I justify it. We are asking to build two repositories. The first is a content repository: the AI session data itself, every prompt, turn, tool call, and piece of context, preserved as the organization's system of record. The second is a metadata repository: everything we derive from that content in order to actually manage the AI, an inventory of what we have deployed, how much it is used, how well it performs, and what return the investment produces. Instrumented AI systems feed the content repository; the metadata repository is derived from it and segregated by sensitivity; and reporting draws from the metadata repository. Everything else in this talk is the argument for why this is the right shape and why it has to be built now. The purpose is management and return: to tell leadership what the AI investment bought and what it is worth.
+""")
+
+    slide("The metadata repository: what the investment bought",
+          [B("Inventory: which AI systems, models, and versions are deployed, and by whom"),
+           B("Utilization: sessions, tokens, and spend, across teams and workflows"),
+           B("Performance and effectiveness: task success, rework, acceptance, escalation"),
+           B("Return on investment: cost from the record set against attributable outcome value, per objective layer"),
+           B("Segregated by sensitivity: risk and continuity metadata governed on their own terms", 1)],
+          notes="""
+The metadata repository is the management vehicle, and it is where the return case lives. It holds four things leadership asks for and cannot get today. An inventory: what AI systems, models, and versions are actually deployed, and by whom. Utilization: how much we use AI, in sessions, tokens, and spend, broken down by team and workflow. Performance and effectiveness: whether the AI is doing useful work, measured by task success, rework, acceptance, and escalation. And return on investment: the cost we know from the record set against the outcome value we can attribute to AI use, reported at each layer of the objective hierarchy. It is segregated internally by sensitivity, so the risk and insider-threat metadata and the session-continuity metadata are governed on their own terms and not comingled with performance reporting. This is the repository that turns the AI budget from an act of faith into an account.
+""")
+
+    slide("The content repository: the system of record",
+          [B("Holds the session data itself: system and user prompts, model turns, tool calls, context"),
+           B("Each interaction is one immutable event, stored with the conditions that produced it"),
+           B("Linked antecedents and consequents; a raw append-only form and a queryable form"),
+           B("It is the source every metadata measure, every risk detection, and every forensic query draws from")],
+          notes="""
+The content repository is the foundation the metadata repository is built on. It holds the raw session data itself: the system and user prompts, the model turns, the tool calls and results, and the context of each interaction. Each interaction is stored as one immutable event, together with the conditions that produced it, so it can be explained after the fact. Events are linked to their antecedents and consequents, and each is kept in two forms, a raw append-only form that is never rewritten and a structured, queryable form. The reason this matters: every number in the metadata repository, every risk detection, and every forensic reconstruction later in this talk is a query over this content. If it was not captured here, it cannot be measured, detected, or investigated anywhere downstream. That is why the content repository comes first.
 """)
 
     # 4 LIABILITY HOOK ------------------------------------------------------
@@ -248,15 +280,6 @@ This is the intellectual core, and it is about knowledge, not technology. Two cl
 The distinction that makes this precise is monitoring versus observability. Monitoring instruments a system against questions its designers already hold: fixed metrics, thresholds, dashboards. It answers known unknowns, and it is useful. Most AI operational tooling on the market today is monitoring: it traces calls and scores them against evaluations chosen in advance. Observability is different: it records behavior at enough fidelity that a question nobody anticipated at instrumentation time can still be answered later by interrogating the record. Because AI failure modes emerge, the questions that will matter most are exactly the ones nobody thought to declare. So what an enterprise needs is an observability substrate, and every design choice that follows, immutability, granularity, provenance, retention, is justified by whether it keeps a future, unspecified question answerable.
 """)
 
-    # 8 ARCHITECTURE fig1 ---------------------------------------------------
-    slide("Reference architecture: a simple flow",
-          [B("Instrument the AI systems in use; store their session content"),
-           B("Derive metadata into stores separated by sensitivity; draw outcomes and risks; report")],
-          image="fig1",
-          notes="""
-The architecture is simple at the top; its complexity is a drill-down. At the top it is a flow. The AI systems in use are instrumented. Their session content is stored. Metadata is derived from that content into a small set of repositories separated by sensitivity, performance in one, hallucination and risk in another, session continuity in a third. Outcomes and risks are drawn from that metadata, and the whole thing is reported to the organization, attributable by organization, product line, and purpose. The lower layers preserve and organize the record; the upper layers interrogate and report it. Keep that flow in mind, because the rest of the talk drills into each box.
-""")
-
     # 9 DATA MODEL fig2 -----------------------------------------------------
     slide("The captured event: immutable and linked",
           [B("Each interaction is one immutable event: the text and the conditions that produced it"),
@@ -279,7 +302,8 @@ A crucial design decision: measures of performance, effectiveness, and KPIs are 
 
     # 11 PORTFOLIO ----------------------------------------------------------
     slide("Proving the return on the AI investment",
-          [B("Cost is known from the record; outcome value from the outcome repository"),
+          [B("Return is the headline output of the metadata repository"),
+           B("Cost is known from the record; outcome value from the outcome repository"),
            B("Return is the relation between them, reported at each layer of the objective hierarchy"),
            B("'How far does AI multiply human capital' becomes a computed quantity, not an assertion"),
            B("The record also shows the downside: over-reliance that degrades workforce competency", 1)],
@@ -380,6 +404,17 @@ The record is powerful because it is complete, and sensitive for the same reason
            B("Over-refusal and under-refusal trade off against each other as the instruction frame tightens")],
           notes="""
 Because this is a proposal, I am putting its claims on the record now as dated, falsifiable predictions, so that a deployed system later confirms or refutes them rather than us rationalizing after the fact. A few of them: hallucination recurrence should cluster in time around context-window saturation and compaction, not arrive at random. In a broadly captured corpus, the rate at which we discover new failure classes should rise with the corpus's age and size, precisely because detection is retrospective. Mitigation efficacy should be visible as an incidence change across the dated boundary where we applied it. Without a repository, an incident's true impact should be systematically underestimated, because the cascade is invisible at the moment it occurs. Guardrails placed upstream of a cause should outperform guardrails at the point of harm. And tightening a system prompt should trade over-refusal against under-refusal rather than improve both. These are testable, and that is the point.
+""")
+
+    # MISSION SPONSOR & NEXT STEPS -----------------------------------------
+    slide("Mission sponsor and next steps",
+          [B("Proposed for [Sponsoring Organization] as mission sponsor"),
+           B("Organization data to be provided: AI systems inventory, objective hierarchy, deployment surfaces"),
+           B("Phased build: content repository first, then metadata derivation, then reporting and ROI"),
+           B("Pilot on one bounded workflow, measure against its objectives, then widen"),
+           B("The predictions of the prior slide become the acceptance tests for the pilot", 1)],
+          notes="""
+Here is what I am asking for and how we would proceed. I am proposing [Sponsoring Organization] as the mission sponsor for this architecture. What I need from the organization is its own data: the inventory of AI systems in use, the objective hierarchy each layer is accountable to, and the surfaces where AI is used so we know where to instrument. The build is phased and low-risk. We stand up the content repository first, because everything depends on capture. Then we derive the metadata repository from it. Then we add reporting and the return-on-investment view. We would not boil the ocean; we pilot on one bounded workflow, measure it against its own objectives, and widen only once it earns that. And the falsifiable predictions I just showed are not academic. They become the acceptance tests for the pilot: if the record does not make incidents, return, and mitigation efficacy measurable as predicted, we will know. I will bring the organization's specifics into the next version.
 """)
 
     # 21 CLOSE --------------------------------------------------------------
