@@ -1,11 +1,3 @@
-% AI Metadata and Session Data Repository -- Whitepaper
-% Genre: forward-looking proposal / design / position paper.
-% MOOD RULE: predictive/design mood only. No evidentiary claims ("we measured",
-% "results show"). Prior internal work is INCORPORATED as informed design, never
-% CITED as evidence. External prior art (standards, observability, pharmacovigilance)
-% is cited freely. Voice: no em-dashes; no filler adjectives; active voice.
-% Class: article for portability. Swap to {neus2025} only for a conference version.
-
 \documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
 \usepackage{times}
@@ -23,7 +15,6 @@
        A Client Architecture for Managing, Measuring, and Mitigating\\
        Enterprise Generative AI}
 
-% Author: Johnny Morgan, sole author (confirmed 2026-08-08).
 \author{Johnny Morgan \\ UMBC Department of Information Systems \\ \texttt{yj07538@umbc.edu}}
 
 \date{\today}
@@ -32,24 +23,22 @@
 \maketitle
 
 \begin{abstract}
-% DRAFT stub in predictive mood -- rewrite in author voice.
-% Enterprises are deploying generative AI into business processes without the
-% instrumentation needed to manage it. We propose a client architecture that
-% captures AI utilization metadata and session data as the precondition for
-% managing AI systems: an inventory of AI tools and instances, quantitative and
-% qualitative measures of utilization and effectiveness (KPIs, MOEs, MOPs), and
-% the capture substrate required to detect, measure, and mitigate hallucinations
-% as they emerge. We argue that AI failure modes are retrospective and emergent,
-% so capture must be comprehensive; anything not captured before it emerges is
-% permanently unavailable to retrospective study. We describe the repository's
-% seven-layer architecture, its immutable-event data model, a measurement
-% framework, and a hallucination risk lifecycle modeled on adverse-event
-% surveillance. We close with a set of dated, falsifiable predictions.
+Enterprises are deploying generative AI into business processes without the
+instrumentation needed to manage it. We propose a client architecture that
+captures AI utilization metadata and session data as the precondition for
+managing AI systems: an inventory of AI tools and instances, quantitative and
+qualitative measures of utilization and effectiveness (KPIs, MOEs, MOPs), and
+the capture substrate required to detect, measure, and mitigate hallucinations
+as they emerge. We argue that AI failure modes are retrospective and emergent,
+so capture must be comprehensive; anything not captured before it emerges is
+permanently unavailable to retrospective study. We describe the repository's
+reference architecture, its immutable-event data model, a measurement
+framework, and a hallucination risk lifecycle modeled on adverse-event
+surveillance. We close with a set of dated, falsifiable predictions.
 \end{abstract}
 
 % ---------------------------------------------------------------------------
 \section{Introduction}
-% Dr. Song 5-paragraph format. Predictive/design mood; external cites only.
 
 Organizations are placing generative AI into their business processes faster than
 they are building the means to manage it. A model now drafts customer replies,
@@ -115,7 +104,6 @@ Section~\ref{sec:limits} its limits.
 % ---------------------------------------------------------------------------
 \section{The Problem: Managing AI Without Visibility}
 \label{sec:problem}
-% MOOD: diagnostic / predictive. Funnels into Section 3.
 
 Organizations are placing generative AI into everyday business processes faster
 than they are building the means to see what it does. A model drafts a contract
@@ -216,8 +204,6 @@ that both sides depend on the same record.
 % ---------------------------------------------------------------------------
 \section{Epistemological Foundation}
 \label{sec:epistemology}
-% MOOD: argument (predictive/normative). Descriptive-leads: the epistemic claim
-% first, the enterprise mandate as its conclusion. External cites only.
 
 The central claim of this paper is about knowledge, not technology. Before an
 organization can manage its use of generative AI, it has to be able to see that
@@ -310,7 +296,6 @@ architecture that makes such a record durable, queryable, and safe to keep.
 % ---------------------------------------------------------------------------
 \section{Related Work and Positioning}
 \label{sec:related}
-% MOOD: survey / positioning. External cites only.
 
 This work sits among three bodies of prior work and departs from each in a
 specific way.
@@ -346,7 +331,6 @@ over a persistent, governed record.
 % ---------------------------------------------------------------------------
 \section{Reference Architecture}
 \label{sec:architecture}
-% MOOD: design. SIMPLE top-level flow; complexity is a drill-down.
 
 The architecture is simple at the top, and its complexity is a drill-down from a
 few components. At the top it is a flow. The AI systems in use are instrumented.
@@ -422,7 +406,6 @@ that the record has to come first and be kept whole.
 % ---------------------------------------------------------------------------
 \section{Data Model}
 \label{sec:datamodel}
-% MOOD: design. Draft prose below; iterate for voice.
 
 The data model follows from the epistemology of Section~\ref{sec:epistemology}.
 If an instance's meaning is knowable only through its cause and its trajectory,
@@ -514,9 +497,6 @@ never severs the links between records.
 % ---------------------------------------------------------------------------
 \section{Measurement Framework}
 \label{sec:measurement}
-% MOOD: design/predictive. Measures are EXOGENOUS + LAYERED (org-defined); the
-% architecture collects/detects/catalogs/stores OUTCOMES for portfolio reporting.
-% Figure F3.
 
 Measures of performance, measures of effectiveness, and key performance
 indicators are not properties of the AI architecture. They are the strategic and
@@ -649,8 +629,6 @@ reliance that outruns verification.
 % ---------------------------------------------------------------------------
 \section{Outcomes: Benefit, Harm, and Liability}
 \label{sec:risk}
-% MOOD: design/predictive. Broadened from "Risk Lifecycle" to cover both signs.
-% Adverse-event lifecycle kept as the harm machinery. Figure F4.
 
 An AI deployment produces outcomes of both signs, and the record captures them
 with the same machinery. On the positive side are mission benefit and
@@ -755,7 +733,6 @@ liability is assessed, are the subject of Section~\ref{sec:obligations}.
 % ---------------------------------------------------------------------------
 \section{Obligations: What AI Must Be Evaluated Against}
 \label{sec:obligations}
-% MOOD: design/normative. The requested "sample set" of obligation classes.
 
 An AI output or action is not evaluated against correctness alone. It is
 evaluated against the obligations that bind the person or organization that used
@@ -799,7 +776,6 @@ is one of the negative outcomes of Section~\ref{sec:risk}.
 % ---------------------------------------------------------------------------
 \section{Trust as an Earned Property}
 \label{sec:trust}
-% MOOD: design/normative. Central tenet: calibrated trust, earned + curated.
 
 Trust is central to AI deployment, and it is the property most likely to be
 misplaced. Users tend to treat an AI as an expert. Unless they are trained
@@ -834,9 +810,6 @@ misplaced trust is how an obligation violation reaches a consequence unchecked.
 % ---------------------------------------------------------------------------
 \section{Theory of Operation}
 \label{sec:operation}
-% MOOD: design. Main end-to-end operation still to draft:
-% instrumentation points (API gateway/proxy, agent hooks, chat/IDE), ingestion,
-% three-tier build, query/reporting surface, tenancy, data residency. Figure F5.
 
 The architecture is deployed as a client-side system that captures at the points
 of AI use, stores to the repository, and serves reporting back to the
@@ -886,7 +859,6 @@ an organization chooses, per population, which guarantee it needs.
 
 \subsection{Future leg: controlled continuity and workflow isolation}
 \label{sec:continuity}
-% MOOD: roadmap / predictive (explicitly future work).
 
 A later phase of the system adds two capabilities that share one principle:
 context should move between sessions only under explicit control.
@@ -914,7 +886,6 @@ the record, within a boundary.
 % ---------------------------------------------------------------------------
 \section{Registered Predictions}
 \label{sec:predictions}
-% MOOD: explicit falsifiable predictions, dated.
 
 This is a proposal, and its claims will be tested by deployment rather than by
 results reported here. To make that test meaningful, we state the paper's central
@@ -949,7 +920,6 @@ comes, is a matter of record and not of hindsight.
 % ---------------------------------------------------------------------------
 \section{Governance, Privacy, and Compliance}
 \label{sec:governance}
-% MOOD: design/normative. External cites only.
 
 The record described in this paper is powerful because it is complete, and it is
 sensitive for the same reason. Governance is what makes keeping it legitimate, and
@@ -1028,7 +998,6 @@ holding the record and governing it are the same act.
 % ---------------------------------------------------------------------------
 \section{Limitations and Threats to Validity}
 \label{sec:limits}
-% MOOD: candid design limitation.
 
 The approach has limits, and they follow from the same facts that motivate it.
 
@@ -1057,7 +1026,6 @@ falsifiability of the predictions rather than on measured outcomes.
 
 % ---------------------------------------------------------------------------
 \section{Conclusion}
-% MOOD: predictive / vision.
 
 An organization cannot manage what it cannot see, and it cannot see its use of AI
 without a record of that use. We have proposed a client architecture that captures
