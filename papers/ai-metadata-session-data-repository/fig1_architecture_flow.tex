@@ -1,23 +1,27 @@
-% Figure F1 --- the architecture as a simple left-to-right flow.
+% Figure F1 --- the reference architecture, organized around the two repositories.
 % Included from main.tex via \resizebox{\textwidth}{!}{\input{fig1_architecture_flow}}.
 \begin{tikzpicture}[
   box/.style={draw, rounded corners, align=center, minimum height=1.25cm,
               text width=2.4cm, font=\scriptsize, fill=black!3},
-  meta/.style={draw, rounded corners, align=center, minimum height=0.95cm,
-               text width=2.7cm, font=\scriptsize, fill=black!3},
+  meta/.style={draw, rounded corners, align=center, minimum height=1.0cm,
+               text width=2.9cm, font=\scriptsize, fill=black!3},
   arr/.style={-{Latex[length=2mm]}, thick, black!70},
   lbl/.style={font=\scriptsize\itshape, text=black!55},
-  node distance=6mm and 13mm
+  rlbl/.style={font=\footnotesize\bfseries, text=black!75},
+  node distance=6mm and 15mm
 ]
 \node[box] (sys) {\textbf{Instrumented AI systems}\\[1pt]each serves a community of purpose};
-\node[box, right=of sys] (scr) {\textbf{Session content repository}\\[1pt]prompts, turns, context; channels; detection, risk, tagging enacted; archived};
-\node[meta, right=15mm of scr] (m2) {Hallucination \& risk metadata};
-\node[meta, above=of m2] (m1) {Performance metadata};
+\node[box, right=20mm of sys] (scr) {session content: prompts, turns, tool calls, context; system of record};
+\node[meta, right=26mm of scr] (m2) {Hallucination \& risk metadata};
+\node[meta, above=of m2] (m1) {\textbf{Inventory, utilization, performance \& ROI metadata}};
 \node[meta, below=of m2] (m3) {Session-continuity metadata};
-\node[box, right=15mm of m2] (out) {\textbf{Outcome \& risk repository}\\[1pt]outcomes, risks, violations, insider threat};
-\node[box, right=of out] (rep) {\textbf{Outcome \& performance reporting}\\[1pt]organizational and corporate};
-\node[draw, dashed, rounded corners, black!45, fit=(m1)(m2)(m3), inner sep=3.5mm,
-      label={[lbl]above:segregated by sensitivity}] (mg) {};
+\node[box, right=16mm of m2] (out) {\textbf{Outcome \& risk store}\\[1pt]outcomes, risks, violations, insider threat};
+\node[box, right=16mm of out] (rep) {\textbf{Reporting}\\[1pt]inventory, utilization, performance, ROI};
+% the two proposed repositories, drawn as labeled containers
+\node[draw, rounded corners, thick, black!60, fit=(scr), inner sep=5mm,
+      label={[rlbl]above:Content Repository}] (crg) {};
+\node[draw, rounded corners, thick, black!60, fit=(m1)(m2)(m3)(out), inner sep=5mm,
+      label={[rlbl]above:Metadata Repository \normalfont\itshape(segregated by sensitivity)}] (mg) {};
 \draw[arr] (sys) -- (scr);
 \draw[arr] (scr.east) -- (m1.west);
 \draw[arr] (scr.east) -- (m2.west);

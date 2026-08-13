@@ -11,6 +11,9 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 
+% Fill in the sponsoring organization once, here.
+\newcommand{\sponsor}{[Sponsoring Organization]}
+
 \title{AI Metadata and Session Data Repository:\\
        A Client Architecture for Managing, Measuring, and Mitigating\\
        Enterprise Generative AI}
@@ -24,18 +27,23 @@
 
 \begin{abstract}
 Enterprises are deploying generative AI into business processes without the
-instrumentation needed to manage it. We propose a client architecture that
-captures AI utilization metadata and session data as the precondition for
-managing AI systems: an inventory of AI tools and instances, quantitative and
-qualitative measures of utilization and effectiveness (KPIs, MOEs, MOPs), and
-the capture substrate required to detect, measure, and mitigate hallucinations
-as they emerge. We argue that AI failure modes are retrospective and emergent,
-so capture must be comprehensive; anything not captured before it emerges is
-permanently unavailable to retrospective study. We describe the repository's
-reference architecture, its immutable-event data model, a measurement
-framework, a hallucination risk lifecycle modeled on adverse-event
+instrumentation needed to manage it. We propose a client architecture built on
+two repositories. A content repository preserves the AI session data as the
+system of record. A metadata repository derives from it the information an
+organization needs to manage its AI: an inventory of AI systems and instances,
+their utilization and performance, an explanation of what the AI investment
+bought, and the metrics from which return on investment is computed, alongside
+the quantitative and qualitative measures of utilization and effectiveness
+(KPIs, MOEs, MOPs). The same captured record is the substrate required to
+detect, measure, and mitigate hallucinations as they emerge. We argue that AI
+failure modes are retrospective and emergent, so capture must be comprehensive;
+anything not captured before it emerges is permanently unavailable to
+retrospective study. We describe the two repositories and their reference
+architecture, the immutable-event data model, a measurement framework centered
+on return on investment, a hallucination risk lifecycle modeled on adverse-event
 surveillance, and a forensic model for the post-incident investigation of AI
-harm. We close with a set of dated, falsifiable predictions.
+harm. The architecture is offered for adoption by a sponsoring organization. We
+close with a set of dated, falsifiable predictions.
 \end{abstract}
 
 % ---------------------------------------------------------------------------
@@ -61,12 +69,19 @@ hallucination passes undetected and unmitigated, and the harm can propagate and
 cascade into corporate embarrassment and liability. Value and risk are invisible
 for the same reason: there is nothing to look at.
 
-In this paper we propose a client architecture that captures AI utilization
-metadata and session data as the precondition for managing AI in an organization.
-The architecture is simple at the top and its complexity is a drill-down. The AI
-systems in use are instrumented, their session content is stored, metadata is
-derived into a small set of repositories separated by sensitivity, and outcomes
-and risks are drawn from that metadata and reported to the organization. We argue
+In this paper we propose a client architecture built on two repositories. A
+content repository preserves the AI session data itself, the prompts, turns, tool
+calls, and context of each interaction, as the organization's system of record. A
+metadata repository derives from that content the information an organization needs
+to manage its AI: an inventory of the AI systems in use, their utilization and
+performance, an explanation of what the AI investment bought, and the metrics from
+which return on investment is computed. The AI systems in use are instrumented,
+their session content is stored in the content repository, metadata is derived into
+the metadata repository and segregated there by sensitivity, and outcomes, risks,
+and return are drawn from the metadata repository and reported to the organization.
+The architecture is proposed for development and adoption by a sponsoring
+organization, \sponsor{}, whose deployment data will populate the inventory,
+utilization, and return measures the metadata repository is built to produce. We argue
 that capture has to come before the questions it will answer, because the
 behaviors worth measuring, from a new failure mode to a new objective, are not
 known when the data is captured, and anything not captured before it emerges is
@@ -334,24 +349,28 @@ over a persistent, governed record.
 \section{Reference Architecture}
 \label{sec:architecture}
 
-The architecture is simple at the top, and its complexity is a drill-down from a
-few components. At the top it is a flow. The AI systems in use are instrumented.
-Their session content is stored. Metadata is derived from that content into a
-small set of repositories separated by sensitivity. Outcomes and risks are drawn
-from that metadata, and the whole is reported to the organization.
-Figure~\ref{fig:arch} shows the flow, and the rest of the paper drills into each
-part.
+The architecture is built on two repositories, and its other components either
+feed them or draw from them. The content repository holds the AI session data
+itself as the system of record. The metadata repository holds what is derived from
+that content: the inventory of AI systems, the utilization and performance
+measures, the metrics from which return on investment is computed, and, segregated
+by sensitivity, the risk and continuity metadata. At the top the architecture is a
+flow. The AI systems in use are instrumented. Their session content is stored in
+the content repository. Metadata is derived into the metadata repository. Outcomes,
+risks, and return are drawn from the metadata repository and reported to the
+organization. Figure~\ref{fig:arch} shows the flow, and the rest of the paper
+drills into each part.
 
 \begin{figure}[t]
 \centering
 \resizebox{\textwidth}{!}{\input{fig1_architecture_flow}}
-\caption{The architecture as a simple flow. Instrumented AI systems emit session
-content to the session content repository, where channels arise and detection,
-risk, and tagging are enacted. Derived metadata is separated by sensitivity into
-performance, hallucination-and-risk, and session-continuity repositories.
-Outcomes and risks are drawn into the outcome and risk repository and presented by
-outcome and performance reporting. Every record is attributable by organization,
-product line, and purpose.}
+\caption{The reference architecture, organized around two repositories.
+Instrumented AI systems emit session content to the content repository, the system
+of record. Derived metadata is held in the metadata repository, segregated by
+sensitivity into an inventory, utilization, performance, and return store, a
+hallucination-and-risk store, and a session-continuity store. Outcomes, risks, and
+return are drawn into the outcome and risk store and presented by reporting. Every
+record is attributable by organization, product line, and purpose.}
 \label{fig:arch}
 \end{figure}
 
@@ -366,9 +385,9 @@ serves and aggregable by purpose and product. The set of instrumented systems,
 identified by purpose and product, is the organization's live inventory of
 deployed AI.
 
-\subsection{Session content repository}
+\subsection{The content repository}
 
-The session content repository holds the session data itself: the system and
+The content repository holds the session data itself: the system and
 session prompts, the human and model turns, and the session context. Channels
 arise here, organized by mission and purpose, and a user's session context
 supports the several swimlanes that user occupies within a system. Hallucination
@@ -376,11 +395,13 @@ detection, risk detection, and taxonomy tagging of mission data are enacted on
 this content, because they operate on what was said, and the content is stored and
 archived as the system of record.
 
-\subsection{Segregated metadata repositories}
+\subsection{The metadata repository}
 
-Metadata is derived from session content into repositories separated by
-sensitivity, and the separation is deliberate. Performance metadata, the
-utilization and throughput picture, is one repository. Hallucination and risk
+Metadata is derived from the content repository into the metadata repository and
+separated there by sensitivity, and the separation is deliberate. The performance
+store, which carries the inventory of AI systems, their utilization and
+performance, and the return-on-investment measures of
+Section~\ref{sec:measurement}, is one part. Hallucination and risk
 metadata is a separate repository, because it is corporate-sensitive and must not
 be comingled with performance reporting. Session-continuity metadata, the user
 session data that a later continuity capability would reinject, is segregated
@@ -1202,9 +1223,11 @@ falsifiability of the predictions rather than on measured outcomes.
 
 An organization cannot manage what it cannot see, and it cannot see its use of AI
 without a record of that use. We have proposed a client architecture that captures
-AI session data and derived metadata as that record, organized as a simple flow:
-instrumented systems, a session content repository, metadata repositories
-segregated by sensitivity, an outcome and risk repository, and reporting. We have
+AI session data and derived metadata as that record, organized around two
+repositories: a content repository that preserves the session data as the system
+of record, and a metadata repository that derives the inventory, utilization,
+performance, and return measures from it, with instrumented systems feeding the
+first and reporting drawing from the second. We have
 argued that capture must precede the questions it will answer, that on such a record
 the harms of AI become foreseeable, detectable, and mitigatable, and that its value,
 including how far it multiplies human capital, becomes calculable. The same record
