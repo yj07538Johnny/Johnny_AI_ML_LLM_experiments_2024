@@ -757,6 +757,21 @@ forensic substrate for AI harm. The immutable, linked, provenance-bearing record
 of Section~\ref{sec:datamodel} is what makes a post-incident investigation
 possible at all, and the adverse-event lifecycle of Section~\ref{sec:risk} is what
 turns the investigation's findings into a defense against the next incident.
+Figure~\ref{fig:forensics} shows the loop this section describes.
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{fig6_forensics}}
+\caption{The harm-forensics loop. A harm incident opens an investigation that
+reconstructs the trigger and conditions, attributes the event between the human
+actor and the AI actor, and traces its downstream scope and cascade. The
+investigation prescribes a guardrail matched to the cause it found, applied at a
+dated boundary, whose efficacy is measured as a change in incidence, so an
+effective guardrail moved upstream becomes prevention and lowers the recurrence of
+the failure class. Each step is a query over the immutable, linked record of
+Section~\ref{sec:datamodel}.}
+\label{fig:forensics}
+\end{figure}
 
 \subsection{The forensic questions and where the record answers them}
 

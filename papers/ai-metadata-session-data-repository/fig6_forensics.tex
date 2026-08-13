@@ -1,0 +1,26 @@
+% Figure F6 --- the harm-forensics loop (Section on forensics).
+% \resizebox to \textwidth in main.tex.
+\begin{tikzpicture}[
+  st/.style={draw, rounded corners, align=center, minimum height=1.15cm,
+             text width=2.05cm, font=\scriptsize, fill=black!3},
+  arr/.style={-{Latex[length=2mm]}, thick, black!70},
+  fb/.style={-{Latex[length=1.8mm]}, dashed, black!55},
+  lbl/.style={font=\scriptsize\itshape, text=black!55},
+  node distance=6mm
+]
+\node[st] (s1) {\textbf{Harm incident}\\an AI output or action causes harm};
+\node[st, right=of s1] (s2) {\textbf{Reconstruct}\\trigger, conditions, taxonomy tag};
+\node[st, right=of s2] (s3) {\textbf{Attribute}\\what the human did vs what the AI did};
+\node[st, right=of s3] (s4) {\textbf{Scope \& cascade}\\downstream reach; who relied};
+\node[st, right=of s4] (s5) {\textbf{Guardrail}\\matched to cause; dated boundary};
+\node[st, right=of s5] (s6) {\textbf{Prevention}\\efficacy measured; recurrence reduced};
+\draw[arr] (s1) -- (s2);
+\draw[arr] (s2) -- (s3);
+\draw[arr] (s3) -- (s4);
+\draw[arr] (s4) -- (s5);
+\draw[arr] (s5) -- (s6);
+\draw[fb] (s6.south) to[out=-90,in=-90,looseness=0.3]
+     node[below,lbl]{lowers the incidence of the failure class} (s1.south);
+\node[lbl] at ($(s1.north)!0.5!(s6.north)+(0,6mm)$)
+     {each step is a query over the immutable, linked record (Section~\ref{sec:datamodel})};
+\end{tikzpicture}
