@@ -33,8 +33,9 @@ as they emerge. We argue that AI failure modes are retrospective and emergent,
 so capture must be comprehensive; anything not captured before it emerges is
 permanently unavailable to retrospective study. We describe the repository's
 reference architecture, its immutable-event data model, a measurement
-framework, and a hallucination risk lifecycle modeled on adverse-event
-surveillance. We close with a set of dated, falsifiable predictions.
+framework, a hallucination risk lifecycle modeled on adverse-event
+surveillance, and a forensic model for the post-incident investigation of AI
+harm. We close with a set of dated, falsifiable predictions.
 \end{abstract}
 
 % ---------------------------------------------------------------------------
@@ -94,8 +95,9 @@ governance frameworks. Section~\ref{sec:architecture} describes the architecture
 and Section~\ref{sec:datamodel} its data model. Section~\ref{sec:measurement}
 develops measurement, portfolio reporting, and the outcome repository.
 Section~\ref{sec:risk} treats outcomes and the hallucination taxonomy, and
-Sections~\ref{sec:obligations} and~\ref{sec:trust} treat the obligations AI must
-meet and the trust it must earn. Section~\ref{sec:operation} describes operation
+Section~\ref{sec:forensics} the forensic investigation of an AI harm after it
+occurs. Sections~\ref{sec:obligations} and~\ref{sec:trust} treat the obligations
+AI must meet and the trust it must earn. Section~\ref{sec:operation} describes operation
 and the planned
 continuity capability. Section~\ref{sec:predictions} states the paper's
 predictions, Section~\ref{sec:governance} its governance, and
@@ -707,6 +709,17 @@ uses AI.}
 \label{tab:taxonomy}
 \end{table}
 
+Two failure modes travel alongside hallucination without being instances of it,
+and the record surfaces both. The first is refusal and over-restriction, where
+the model declines a legitimate request or narrows a permitted one, so the harm
+is a withheld benefit rather than a wrong output. The second is its inverse,
+compliance with a request the model should have declined, where the harm is an
+action taken that a boundary should have stopped. Both are legible only against
+the recorded request and the workflow's permitted scope, and both are measured
+the same way the outcomes of Section~\ref{sec:measurement} are: over-refusal as
+a loss of effectiveness, under-refusal as a violation of the obligations of
+Section~\ref{sec:obligations}.
+
 Fabrication is treated at greater length next, because it is the form most
 damaging to an organization's fact base.
 
@@ -729,6 +742,140 @@ Establishing what the model was asked, under what configuration, what it
 produced, who relied on it, and what followed requires exactly the record this
 paper describes. The obligations that an outcome may violate, and against which
 liability is assessed, are the subject of Section~\ref{sec:obligations}.
+
+% ---------------------------------------------------------------------------
+\section{Harm Forensics and the Post-Incident Investigation}
+\label{sec:forensics}
+
+When an AI-induced harm occurs, the harm is not the end of the event. It opens an
+investigation the organization is obliged to conduct, and the questions that
+investigation asks are forensic: what was produced, what triggered it, what caused
+it, how far it spread, who and what is accountable, and how a recurrence is
+prevented. None of these can be answered after the fact for an interaction that
+left no record. Among its other roles, the architecture of this paper is the
+forensic substrate for AI harm. The immutable, linked, provenance-bearing record
+of Section~\ref{sec:datamodel} is what makes a post-incident investigation
+possible at all, and the adverse-event lifecycle of Section~\ref{sec:risk} is what
+turns the investigation's findings into a defense against the next incident.
+
+\subsection{The forensic questions and where the record answers them}
+
+A post-incident investigation has to establish a specific set of facts, and each
+is a property of the captured record rather than an inference drawn after the
+event. Table~\ref{tab:forensics} lists the questions a forensic account of an AI
+harm has to answer and the evidence in the record that answers each. The point is
+not that these facts are easy to recover, but that they are recoverable at all
+only where the interaction was captured before the harm was known.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{p{0.40\linewidth}p{0.52\linewidth}}
+\toprule
+Forensic question & Evidence in the record \\
+\midrule
+What was produced, and was it wrong & The model response, tagged against the hallucination taxonomy (Section~\ref{sec:risk}); a fabricated assertion distinguished from a grounded one by provenance \\
+Under what conditions it was produced (the trigger) & The generating conditions of the event: system prompt, decoding parameters, input, and model id and version (Table~\ref{tab:fields}) \\
+Was a hallucination or fabrication involved, and of which kind & The taxonomy tag on the event and the captured fields that support each category \\
+What the human actor did & The human turns and the recorded human interactions: edit, acceptance, rejection, and follow-up \\
+What the AI actor did & The model turns, the tool calls, and the tool results \\
+How far it spread (scope and scale) & The consequent links from the event, traversed to the downstream work the output entered \\
+Whether a control existed and held & The presence or absence of a review, rejection, or verification step in the recorded interaction \\
+\bottomrule
+\end{tabular}
+\caption{The questions a forensic investigation of an AI harm must answer, and the
+evidence in the record that answers each. Each answer is a query over the captured
+event and its links, not a reconstruction attempted after the interaction is gone.}
+\label{tab:forensics}
+\end{table}
+
+\subsection{Separating the human actor from the AI actor}
+
+A forensic account has to attribute the harm, and attribution begins by separating
+what the human actor did from what the AI actor did. The record supports this
+because it captures both sides as distinct, linked events: the human turns and the
+human interactions of Table~\ref{tab:fields} on one side, and the model turns, tool
+calls, and tool results on the other. From this an investigation can establish
+whether a harm originated in the model's output, in a person's use of that output,
+or in the interaction between them, and whether a human review gate existed at the
+point of harm and whether it held.
+
+This separation is what distinguishes two adversarial cases an investigation must
+not conflate. In one, the AI actor is the source: the model fabricates,
+misrepresents, or takes an unsafe autonomous action, and the harm is a model
+failure of the kind Section~\ref{sec:risk} classifies. This is the rogue or
+agentic case, and its signature in the record is an action the model took without a
+verified precondition or outside its authorized scope. In the other, the human
+actor is the source: a person directs the AI to act against the organization, and
+the harm is insider misuse for which the AI is the instrument. Its signature is not
+a model error at all but a pattern of instruction and use, such as extraction at
+volume, probing of scope or permission, or direction toward a prohibited end. The
+same record grounds both findings, and only the record lets an investigation tell
+them apart, because the intent of a human actor is legible only through the
+sequence of instructions and uses the record preserves.
+
+\subsection{Scope, scale, and the cascade}
+
+The impact of an AI harm is a function of how far its output travelled, and that
+reach is rarely evident when the harm occurs. A fabricated figure enters a report,
+the report enters a decision, and the decision conditions work downstream of it.
+Without the links of Section~\ref{sec:datamodel} an investigation sees only the
+first event and underestimates the harm. With them it traverses the consequent
+links to establish scope, which work was affected, and scale, how much, so a
+correction can reach every place the output went. This is the forensic form of the
+claim registered as Prediction~4: absent the record, the impact of an incident is
+systematically underestimated, because the cascade linking it to its consequences
+is not observable at the moment it occurs.
+
+\subsection{From post-mortem to guardrail}
+
+A forensic investigation is not complete when it has explained a harm. Its purpose
+is to prevent the next one, and its output is a guardrail. The lifecycle of
+Section~\ref{sec:risk} supplies the mechanism: a mitigation is applied at a dated
+boundary, its efficacy is measured as a change in incidence across that boundary,
+and a mitigation that proves effective and is moved upstream becomes prevention.
+What the post-mortem adds is the choice of guardrail, informed by the cause it
+found. Table~\ref{tab:guardrails} lists the classes of guardrail a post-mortem can
+prescribe, each paired with the cause it addresses.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{p{0.24\linewidth}p{0.37\linewidth}p{0.31\linewidth}}
+\toprule
+Guardrail class & What it changes & The cause it addresses \\
+\midrule
+System-prompt engineering & Constrains the instruction frame the model operates under & A harm traced to a permissive or ambiguous system prompt \\
+Input and output validation & Checks inputs and screens outputs before they are used & A harm traced to an unchecked input or an unscreened assertion \\
+Human-in-the-loop review gate & Requires human review at a defined point before an output is used or an action is taken & A harm a review gate would have caught, or one where a gate existed but was not enforced \\
+Tool and permission constraint & Limits the actions an agentic system may take without authorization & A harm traced to an unsafe or unauthorized autonomous action \\
+Workforce hallucination-awareness training & Raises the workforce's ability to recognize and check AI failure & A harm traced to over-trust or an unrecognized fabrication (Section~\ref{sec:trust}) \\
+Model version and configuration control & Governs which model versions and settings are deployed & A harm traced to a model change or a configuration drift \\
+\bottomrule
+\end{tabular}
+\caption{Classes of guardrail a post-incident investigation can prescribe, each
+matched to the class of cause it addresses. Each guardrail is itself recorded,
+applied at a dated boundary, and evaluated by the same measurement the harm was
+detected with, so a response whose efficacy the record cannot demonstrate is
+distinguishable from no response.}
+\label{tab:guardrails}
+\end{table}
+
+Because each guardrail is recorded and dated, the organization can show not only
+that it responded to a harm but that its response worked, and can tell an effective
+guardrail from a nominal one. A guardrail whose efficacy the record cannot
+demonstrate is, for the purpose of accountability, indistinguishable from no
+guardrail at all.
+
+\subsection{Forensics and liability}
+
+The forensic record is also the basis on which liability is assessed. Liability
+attaches to specific acts (Section~\ref{sec:risk}), and establishing what the model
+was asked, under what configuration, what it produced, who relied on it, and what
+followed is the reconstruction this section describes. An organization that can
+produce this account can bound its liability to what occurred and demonstrate the
+diligence of its response. An organization that cannot is exposed to the worst
+construction of an event for which it holds no record.
 
 % ---------------------------------------------------------------------------
 \section{Obligations: What AI Must Be Evaluated Against}
@@ -912,6 +1059,17 @@ the capability of the model in use.
 \item A change to the capture schema creates a permanent retrospective blind spot,
 observable afterward as a discontinuity in a metric that was trackable before the
 change.
+\item When an AI harm is investigated over the record, the reconstructed scope of
+its cascade exceeds the scope visible at the moment of the incident, and the gap
+widens with the number of downstream steps the output passed through.
+\item A guardrail prescribed by a post-incident investigation and applied at a
+dated boundary produces a measurable change in the incidence of the failure class
+it targets, and the change is larger for a guardrail placed upstream of the cause
+than for one placed at the point of harm.
+\item Over-refusal and under-refusal move in opposite directions under a given
+system prompt, so that a change tightening the instruction frame lowers one while
+raising the other, observable in the record as a trade-off rather than a uniform
+improvement.
 \end{enumerate}
 
 We record these as of the date of this paper, so that their confirmation, if it
