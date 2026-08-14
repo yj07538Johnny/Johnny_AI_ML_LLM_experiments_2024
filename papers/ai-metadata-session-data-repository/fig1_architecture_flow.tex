@@ -2,7 +2,7 @@
 % Included from main.tex via \resizebox{\textwidth}{!}{\input{fig1_architecture_flow}}.
 \begin{tikzpicture}[
   box/.style={draw, rounded corners, align=center, minimum height=1.25cm,
-              text width=2.4cm, font=\scriptsize, fill=black!3},
+              text width=2.5cm, font=\scriptsize, fill=black!3},
   meta/.style={draw, rounded corners, align=center, minimum height=1.0cm,
                text width=2.9cm, font=\scriptsize, fill=black!3},
   arr/.style={-{Latex[length=2mm]}, thick, black!70},
@@ -10,18 +10,18 @@
   rlbl/.style={font=\footnotesize\bfseries, text=black!75},
   node distance=6mm and 15mm
 ]
-\node[box] (sys) {\textbf{Instrumented AI systems}\\[1pt]each serves a community of purpose};
-\node[box, right=20mm of sys] (scr) {session content: prompts, turns, tool calls, context; system of record};
-\node[meta, right=26mm of scr] (m2) {Hallucination \& risk metadata};
-\node[meta, above=of m2] (m1) {\textbf{Inventory, utilization, performance \& ROI metadata}};
+\node[box] (sys) {\textbf{Instrumented AI systems}\\[1pt]dozens of purpose-based services; tens of thousands of users};
+\node[box, right=22mm of sys] (scr) {session content: prompts, turns, tool calls, context; system of record};
+\node[meta, text width=3.5cm, right=28mm of scr] (m1) {\textbf{Inventory, utilization, UX \& journey, tokens, GPU/compute \& network, market segments, ROI}};
+\node[meta, below=of m1] (m2) {Hallucination \& risk metadata};
 \node[meta, below=of m2] (m3) {Session-continuity metadata};
 \node[box, right=16mm of m2] (out) {\textbf{Outcome \& risk store}\\[1pt]outcomes, risks, violations, insider threat};
 \node[box, right=16mm of out] (rep) {\textbf{Reporting}\\[1pt]inventory, utilization, performance, ROI};
 % the two proposed repositories, drawn as labeled containers
 \node[draw, rounded corners, thick, black!60, fit=(scr), inner sep=5mm,
-      label={[rlbl]above:Content Repository}] (crg) {};
+      label={[rlbl, align=center]above:Content Repository\\[-1pt]{\normalfont\itshape\scriptsize qualitative \& forensic}}] (crg) {};
 \node[draw, rounded corners, thick, black!60, fit=(m1)(m2)(m3)(out), inner sep=5mm,
-      label={[rlbl]above:Metadata Repository \normalfont\itshape(segregated by sensitivity)}] (mg) {};
+      label={[rlbl, align=center]above:Metadata Repository\\[-1pt]{\normalfont\itshape\scriptsize quantitative; segregated by sensitivity}}] (mg) {};
 \draw[arr] (sys) -- (scr);
 \draw[arr] (scr.east) -- (m1.west);
 \draw[arr] (scr.east) -- (m2.west);
