@@ -161,9 +161,9 @@ The argument is one sentence: we cannot manage AI we cannot see, and seeing how 
 
     # ---- 1 PROBLEM -------------------------------------------------------
     slide("Managing AI we cannot see",
-          [B("A model now drafts replies, writes code, summarizes documents, and helps decide, at scale"),
-           B("Each interaction is used and then gone: no inventory, no utilization record, no trace of failure"),
-           B("We cannot prove the return, and we cannot see the harm, both invisible for the same reason"),
+          [B("Adoption is at scale: dozens of purpose-based AI systems serving tens of thousands of users"),
+           B("A model drafts replies, writes code, summarizes, and helps decide; each interaction is used and then gone"),
+           B("No inventory, no utilization record, no trace of failure: we can prove neither the return nor the harm"),
            B("Governance and regulation now treat the record of AI use as an obligation, not an option", 1)],
           notes="""
 Adoption is running ahead of management. A model is already drafting clauses, answering customers, and writing code across the organization, and each interaction leaves almost nothing behind. We keep the output and lose the conditions that produced it. That single gap makes two things invisible at once: the value we are getting, which we cannot prove, and the failures we are exposed to, which we cannot see. A manager accountable for an AI deployment cannot today answer basic questions: what do we have deployed, how much do we use it, is it working, how often is it wrong, and does that wrong thing spread. The instinct is to add metrics. That fails, because the failures that matter most are the ones nobody thought to declare in advance. What we lack is not a dashboard, it is a record.
@@ -171,26 +171,36 @@ Adoption is running ahead of management. A model is already drafting clauses, an
 
     # ---- 2 PROPOSAL (fig1) ----------------------------------------------
     slide("What we propose: two repositories",
-          [B("Content repository: the AI session data itself, preserved as the system of record"),
-           B("Metadata repository: everything derived from it, to manage the AI and prove its return"),
-           B("Instrumented systems feed the content repository; reporting draws from the metadata repository")],
+          [B("Metadata repository: quantitative, inventory, utilization, tokens, compute, market segments, ROI"),
+           B("Content repository: qualitative and forensic, every session as the system of record"),
+           B("Systems feed content; metadata is derived; reporting draws from both")],
           image="fig1",
           notes="""
 This is the proposal, on the table before I justify it. We build two repositories. The first is a content repository: the AI session data itself, every prompt, turn, tool call, and piece of context, preserved as the organization's system of record. The second is a metadata repository: everything we derive from that content in order to manage the AI, an inventory of what we have deployed, how much it is used, how well it performs, and the return it produces. Instrumented AI systems feed the content repository; the metadata repository is derived from it and segregated by sensitivity; reporting draws from the metadata repository. Everything else in this briefing is the case for why this shape is right and why it has to be built now.
 """)
 
     # ---- 3 METADATA REPOSITORY ------------------------------------------
-    slide("The metadata repository: what the investment bought",
-          [B("Inventory: which AI systems, models, and versions are deployed, and by whom"),
-           B("Utilization: sessions, tokens, and spend, across teams and workflows"),
-           B("Performance and effectiveness: task success, rework, acceptance, escalation"),
-           B("Return on investment: cost from the record against attributable outcome value, per objective layer"),
+    slide("The metadata repository: the quantitative picture",
+          [B("Inventory and user base: which AI systems, models, and versions are deployed, and the users on them"),
+           B("Utilization and experience: sessions, token consumption, user experience and journey, by team and market segment"),
+           B("Infrastructure: the GPU compute and network the services draw on, the cost base of AI"),
+           B("Effectiveness and return: task success and rework; cost against attributable value; the scale and scope of the investment"),
            B("Segregated by sensitivity: risk and continuity metadata governed on their own terms", 1)],
           notes="""
-The metadata repository is the management vehicle, and it is where the return case lives. It holds four things leadership asks for and cannot get today. An inventory of what AI systems, models, and versions are actually deployed, and by whom. Utilization: how much we use AI, in sessions, tokens, and spend, by team and workflow. Performance and effectiveness: whether the AI is doing useful work, in task success, rework, acceptance, and escalation. And return on investment: the cost we know from the record set against the outcome value we can attribute to AI use, reported at each layer of the objective hierarchy. Inside it, risk and continuity metadata are segregated by sensitivity and governed on their own terms. This is the repository that turns the AI budget from an act of faith into an account.
+The metadata repository is the quantitative management vehicle, and it is where the return case lives. It answers what leadership asks and cannot get today, across all of the systems at once. An inventory and user base: what AI systems, models, and versions are deployed, and the tens of thousands of users on them. Utilization and experience: sessions, token consumption, and the user experience and journey, broken down by team and by market segment. Infrastructure: the GPU compute and network the services consume, which is the real cost base of AI at scale. Effectiveness and return: task success and rework, and cost set against attributable value, so the scale and scope of the investment become a number rather than a guess. Inside it, the risk and continuity metadata are segregated by sensitivity and governed on their own terms. This is the repository that turns the AI budget from an act of faith into an account.
 """)
 
-    # ---- 4 WHY NOW (capture-first + liability) ---------------------------
+    # ---- 4 CONTENT REPOSITORY -------------------------------------------
+    slide("The content repository: the qualitative and forensic substrate",
+          [B("Collects, retains, and sustains every user-AI session across every service, as the system of record"),
+           B("The basis for forensic investigation after a harm event, and for studying, mitigating, and preventing hallucination"),
+           B("Qualitative measures by classifying the interactions: what the AI is used for, how far it supports each work role"),
+           B("Whether users' work products improve in quality, velocity, scope, completeness, and professionalism", 1)],
+          notes="""
+The content repository is the other half, and it answers the questions counts cannot. It collects, retains, and sustains the session data of every user-AI session across every service, the prompts, turns, tool calls, and context, as the system of record. Because it preserves what was actually said and done, it is the substrate for qualitative and retrospective work. It is the basis for forensic investigation after a harm event, and for examining, classifying, studying, mitigating, and preventing hallucination behaviors. And from the same content we derive qualitative measures of AI performance by classifying the interactions themselves: what the AI is actually used for, how far it supports each user's work role, and whether the work products people produce with it improve in quality, velocity, scope, completeness, and professionalism. The metadata repository tells us how much and how many; the content repository tells us how well and to what end.
+""")
+
+    # ---- 5 WHY NOW (capture-first + liability) ---------------------------
     slide("Why it must be built now",
           [B("The failures worth measuring are not known in advance; capture must precede the question"),
            B("Anything not captured before it emerges is unrecoverable: a permanent blind spot"),
