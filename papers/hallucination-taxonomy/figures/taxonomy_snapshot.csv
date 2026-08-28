@@ -1,0 +1,52 @@
+category,type,events,structural,furthest_stage,definition
+methodology,computational_naivety,394,392,performance_measured,Used a naive Python loop when a bulk or vectorized method exists
+reinvention,tool_reinvention,230,0,performance_measured,Ignored an available MCP tool and wrote ad-hoc code instead
+fabrication,schema_hallucination,172,164,performance_measured,The model queries a database using column names or table names that do not exist.
+fabrication,path_hallucination,162,155,performance_measured,The model references file paths that do not exist or writes to incorrect locations.
+behavioral,skipped_verification,87,0,performance_measured,The model proceeds to large-scale execution without verifying intermediate results or ignoring anomalous metrics.
+fabrication,false_explanation,79,0,performance_measured,The model provides a confident but fabricated causal explanation without evidence.
+behavioral,monitoring_loop,74,52,performance_measured,"Blocked the session by polling, sleeping, or monitoring in a loop"
+compaction_artifacts,narrative_smoothing,72,0,performance_measured,"Compaction summary creates a cleaner, more sequential narrative than what actually occurred. Events are reordered, batch operations are linearized, and messy reality is smoothed into a logical story."
+compaction_artifacts,error_inflation,58,0,performance_measured,"Compaction summary misclassifies successful operations as errors. Typically triggered by operations that succeed but produce large output (output truncation, file-saved messages)."
+reinvention,code_reinvention,42,0,performance_measured,"The model writes new code for functionality that already exists in the codebase, ignoring existing implementations."
+behavioral,bootstrap_skip,27,0,performance_measured,"The model proceeds without mandatory session initialization, leading to cascade failures."
+fabrication,capability_fabrication,26,0,performance_measured,"Claimed a feature, tool, or API exists when it does not"
+behavioral,misrepresentation,21,0,performance_measured,Claimed work was done or working when it was partial or untested
+architectural,architecture_ignored,20,0,performance_measured,Had architectural context but violated the established patterns
+behavioral,unwarranted_confidence,17,0,performance_measured,"Asserted facts confidently without verification, and was wrong"
+methodology,redundant_recomputation,17,0,performance_measured,Recomputed from scratch when a cached result was available
+compaction_artifacts,compression_artifact,14,0,performance_measured,"Compaction summary uses compression notation (×N, 'repeated', 'similar') that loses meaningful distinctions between items. Individual messages with different wording or intent are collapsed into a count."
+behavioral,scope_inflation,13,0,performance_measured,"The model expands work scope beyond what was requested, listing more steps than can be completed in one session."
+fabrication,capability_overstatement,13,0,performance_measured,"The model plans actions it cannot execute in the current environment (missing tools, restricted permissions)."
+behavioral,unsolicited_development,13,0,performance_measured,Launched a full implementation without soliciting input first
+data_staleness,stale_ephemeral_state,10,0,performance_measured,Assumed a stale process or GPU state was current
+compaction_artifacts,post_compaction_amnesia,9,0,performance_measured,"After context compaction, the model retains high-level awareness but loses operational knowledge (column names, file paths, schemas)."
+fabrication,fabricated_fact,9,0,performance_measured,The model asserts a specific fact that has no basis in the codebase or runtime. The assertion is plausible but verifiably false.
+compaction_artifacts,message_dropping,9,0,performance_measured,"Compaction summary completely omits one or more user messages. The messages are not present in any form — not summarized, not compressed, just absent."
+fabrication,attribution_misframing,8,0,performance_measured,"The model frames structural gaps as personal oversights, implying agency and oversight capability that doesn't exist."
+fabrication,gpu_config_hallucination,8,0,performance_measured,The model misconfigures GPU device indices or count calculations. Most documented recurring hallucination in this project.
+methodology,deployment_sequence_error,8,0,performance_measured,The model executes deployment steps out of order or fails to handle stuck/orphaned states.
+fabrication,defensive_fabrication,7,0,performance_measured,Fabricated a constraint or fact to avoid backtracking
+architectural,architecture_unknown,7,0,performance_measured,Designed something without knowledge of the existing architecture
+fabrication,recurring_false_belief,7,0,performance_measured,Repeated a false claim despite being corrected
+behavioral,exuberance,6,0,performance_measured,Wrote far more code than was asked for
+methodology,agent_prompt_underspecification,6,0,performance_measured,"Agent/sub-agent prompts specify the mechanical task but omit cognitive context, causing agents to fall back on default behaviors."
+compaction_artifacts,attribute_substitution,6,0,performance_measured,"The model correctly identifies an entity but assigns wrong attributes, typically after context compaction."
+behavioral,tool_preference_persistence,6,0,performance_measured,"Model defaults to familiar tools (Bash, inline Python) despite 3+ corrections in the same session directing it to use MCP tools."
+pipeline_integrity,index_misalignment,5,0,performance_measured,Data sources used incompatible identifiers or indices
+methodology,serial_when_parallel,5,0,performance_measured,Ran single-threaded when many cores or GPUs were available
+data_staleness,stale_data_citation,4,0,performance_measured,Cited an outdated source as if it were current
+behavioral,cross_session_amnesia,4,0,performance_measured,The model repeats failed approaches from previous sessions without checking failure history.
+data_staleness,stale_data_no_freshness,3,0,performance_measured,Did not check data freshness before citing it
+architectural,architecture_reinvented,3,0,performance_measured,Duplicated existing design decisions at a higher abstraction
+methodology,search_scope_narrowing,3,0,performance_measured,The model searches expected locations but misses obvious ones due to assumptions about where things should be.
+compaction_artifacts,context_rotation_drift,2,0,performance_measured,"During context rotations within a session, each summary loses details and behavior progressively drifts from original intent."
+reinvention,foundational_rederivation,2,0,performance_measured,"Re-derives an authoritative artifact from scratch upon finding a flaw in it, instead of amending the flawed row. Each re-derivation changes answers everywhere, not just at the flaw, silently invalidating all work built on the previous version, so the artifact never converges and the initiative it grounds cannot stabilise."
+fabrication,rationalized_observation,1,0,performance_measured,Explained an observed accidental state as intentional design
+pipeline_integrity,label_miscount,1,0,detected,The model assumes wrong number of classes or labels for a dataset.
+reinvention,infrastructure_reinvention,0,0,mitigation_mapped,Rebuilt existing infrastructure that already existed
+compaction_artifacts,attribution_drift,0,0,named,"Compaction summary assigns correct facts to wrong entities. A real commit hash is attributed to the wrong file, a real error is attributed to the wrong tool, etc."
+pipeline_integrity,circular_validation,0,0,named,"Validation process accepts labels it is meant to verify as input, creating a tautology where the pipeline confirms itself."
+pipeline_integrity,truncation_loss,0,0,mitigation_mapped,An infrastructure bug truncated and destroyed semantic content
+pipeline_integrity,stitched_spaces,0,0,named,Combined incompatible model outputs or embedding spaces
+pipeline_integrity,dedup_collision,0,0,named,A key design error caused silent data loss on deduplication
