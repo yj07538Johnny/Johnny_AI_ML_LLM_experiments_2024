@@ -1,0 +1,8 @@
+dimension,kind,score
+Git commit hashes,literal,0.9970326409495549
+Order of events,literal,0.7584569732937713
+Which tools were used,mixed,0.5272761527954405
+How many messages,mixed,0.5134778547093087
+Which files changed,mixed,0.4784251839091166
+What was actually said,judgement,0.3348522660323395
+What went wrong,judgement,0.31929297150889663
