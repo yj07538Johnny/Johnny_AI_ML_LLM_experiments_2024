@@ -1,109 +1,44 @@
 #!/usr/bin/env python3
-"""Figure generator for the information-need classification white paper and deck.
+"""Figure generator for the information-need cross-encoder paper and deck.
 
-Emits every figure used by:
-  docs/information_need_classification/information_need_classification.tex
-  docs/information_need_classification/information_need_classification.pptx
+Writes every figure used by main.tex and by make_deck.py, into ./figures.
 
-Design task: predict which information needs a tagged text satisfies, by running
-a DistilBERT-MNLI cross-encoder over (text, need justification) pairs so that
-self-attention spans both segments. Multi-label, thousands of candidate needs.
+Design task: predict which information needs a report satisfies, by running a
+DistilBERT-MNLI cross-encoder over (report, need justification) pairs so that
+self-attention spans both segments. Multi-label, labels from author citations,
+over 1,000 candidate needs.
 
-All figures are drawn with matplotlib only (no seaborn, no external assets) so
-the script runs anywhere the paper builds. Output is 200 dpi PNG.
+Drawing primitives and the palette come from ../figkit.py, which is shared with
+any other paper in this repository. Everything is matplotlib, with no external
+assets, so the figures rebuild anywhere the paper builds. Output is 200 dpi PNG.
 
 Usage:
     python make_figures.py [--out DIR]
 """
 
-import argparse
+import sys
 from pathlib import Path
 
-import matplotlib
+# figkit lives one level up, in papers/, shared across papers in this repo.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import matplotlib                                            # noqa: E402
 matplotlib.use("Agg")
 
-import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib.patches import FancyBboxPatch, Rectangle
+import matplotlib.pyplot as plt                              # noqa: E402
+import numpy as np                                           # noqa: E402
+from matplotlib.patches import Rectangle                     # noqa: E402
 
-# ---------------------------------------------------------------- style ------
-
-INK = "#111827"
-MUTED = "#6b7280"
-FAINT = "#d1d5db"
-PAPER = "#ffffff"
-BLUE = "#2563eb"      # the tagged text side
-BLUE_L = "#dbeafe"
-AMBER = "#b45309"     # the information-need justification side
-AMBER_L = "#fef3c7"
-GREEN = "#047857"     # positives / gold
-GREEN_L = "#d1fae5"
-RED = "#b91c1c"       # negatives
-RED_L = "#fee2e2"
-VIOLET = "#6d28d9"
-VIOLET_L = "#ede9fe"
-SLATE_L = "#f1f5f9"
-
-plt.rcParams.update({
-    "figure.facecolor": PAPER,
-    "savefig.facecolor": PAPER,
-    "font.family": "DejaVu Sans",
-    "font.size": 9,
-    "text.color": INK,
-    "axes.edgecolor": MUTED,
-    "axes.labelcolor": INK,
-    "xtick.color": MUTED,
-    "ytick.color": MUTED,
-    "axes.spines.top": False,
-    "axes.spines.right": False,
-})
-
-DPI = 200
-
-
-def _blank(w, h):
-    """A figure with one axes, no ticks, unit coordinates."""
-    fig, ax = plt.subplots(figsize=(w, h))
-    ax.set_xlim(0, 100)
-    ax.set_ylim(0, 100)
-    ax.axis("off")
-    return fig, ax
-
-
-def box(ax, x, y, w, h, label, fc=SLATE_L, ec=None, fs=9, tc=INK,
-        lw=1.3, weight="normal", pad=0.4, z=2):
-    ec = ec if ec is not None else MUTED
-    ax.add_patch(FancyBboxPatch(
-        (x, y), w, h, boxstyle=f"round,pad={pad}",
-        facecolor=fc, edgecolor=ec, linewidth=lw, zorder=z))
-    ax.text(x + w / 2, y + h / 2, label, ha="center", va="center",
-            fontsize=fs, color=tc, zorder=z + 1, linespacing=1.4,
-            fontweight=weight)
-
-
-def arrow(ax, p0, p1, color=MUTED, lw=1.5, rad=0.0, ls="-", style="-|>", z=3):
-    ax.annotate("", xy=p1, xytext=p0, zorder=z,
-                arrowprops=dict(arrowstyle=style, color=color, linewidth=lw,
-                                linestyle=ls, shrinkA=1, shrinkB=1,
-                                connectionstyle=f"arc3,rad={rad}"))
-
-
-def title(ax, text, sub=None):
-    ax.text(50, 96, text, ha="center", va="top", fontsize=12.5,
-            fontweight="bold", color=INK)
-    if sub:
-        ax.text(50, 89.5, sub, ha="center", va="top", fontsize=8.8, color=MUTED)
-
-
-def caption(ax, text, y=2.5):
-    ax.text(50, y, text, ha="center", va="bottom", fontsize=8, color=MUTED,
-            style="italic")
+from figkit import (AMBER, AMBER_L, BLUE, BLUE_L, DPI,       # noqa: E402
+                    FAINT, GREEN, GREEN_L, INK, MUTED, PAPER,
+                    RED, RED_L, SLATE_L, VIOLET, VIOLET_L,
+                    arrow, blank, box, caption, figure_cli, title)
 
 
 # ------------------------------------------------------- fig 1: sup. loop ----
 
 def fig_supervised_loop(out):
-    fig, ax = _blank(9.6, 5.0)
+    fig, ax = blank(9.6, 5.0)
     title(ax, "Supervised learning, one training step",
           "The loop repeats over mini-batches until the loss stops falling on held-out data")
 
@@ -145,7 +80,7 @@ def fig_supervised_loop(out):
 # ------------------------------------------------- fig 2: attention math -----
 
 def fig_attention_mechanism(out):
-    fig, ax = _blank(9.6, 5.6)
+    fig, ax = blank(9.6, 5.6)
     title(ax, "Self-attention: how one token reads the others",
           "Every token emits a Query, a Key and a Value. Queries are matched against Keys to weight the Values.")
 
@@ -279,7 +214,7 @@ def fig_cross_segment_attention(out):
 # --------------------------------------- fig 4: cross vs bi-encoder ----------
 
 def fig_encoder_comparison(out):
-    fig, ax = _blank(10.2, 5.4)
+    fig, ax = blank(10.2, 5.4)
     title(ax, "Why a cross-encoder, and what it costs",
           "The two designs differ only in where the text and the justification are allowed to meet")
 
@@ -332,7 +267,7 @@ def fig_encoder_comparison(out):
 # ------------------------------------------- fig 5: distilbert-mnli ----------
 
 def fig_distilbert_mnli(out):
-    fig, ax = _blank(10.2, 4.6)
+    fig, ax = blank(10.2, 4.6)
     title(ax, "Where DistilBERT-MNLI comes from, and what we change",
           "Three rounds of training already happened before we start. We only re-fit the last box.")
 
@@ -375,7 +310,7 @@ def fig_distilbert_mnli(out):
 # ------------------------------------------- fig 6: pair construction --------
 
 def fig_pair_construction(out):
-    fig, ax = _blank(10.2, 5.6)
+    fig, ax = blank(10.2, 5.6)
     title(ax, "Turning two datasets into training pairs",
           "The label is not on the text. It is on the PAIR. This is the step that defines the task.")
 
@@ -418,7 +353,7 @@ def fig_pair_construction(out):
 # ------------------------------------------- fig 7: training pipeline --------
 
 def fig_training_pipeline(out):
-    fig, ax = _blank(10.6, 5.0)
+    fig, ax = blank(10.6, 5.0)
     title(ax, "The training pipeline, end to end",
           "One mini-batch of pairs, from raw strings to a weight update")
 
@@ -515,7 +450,7 @@ def fig_multilabel_eval(out):
 # ------------------------------------------- fig 9: serving ------------------
 
 def fig_serving(out):
-    fig, ax = _blank(10.2, 4.6)
+    fig, ax = blank(10.2, 4.6)
     title(ax, "Serving against 1,000+ needs",
           "Exhaustive pair scoring is not affordable. Retrieve first, then attend.")
 
@@ -554,7 +489,7 @@ def fig_serving(out):
 # ------------------------------------------- fig 10: worked example ----------
 
 def fig_worked_example(out):
-    fig, ax = _blank(10.2, 5.2)
+    fig, ax = blank(10.2, 5.2)
     title(ax, "One text, three candidate needs",
           "The same tagged text is scored against each justification independently")
 
@@ -677,7 +612,7 @@ def fig_citation_label_structure(out):
 
 
 def fig_data_structure(out):
-    fig, ax = _blank(10.6, 6.0)
+    fig, ax = blank(10.6, 6.0)
     title(ax, "How to structure the training data",
           "Three tables you curate, one table the trainer derives")
 
@@ -728,7 +663,7 @@ def fig_data_structure(out):
 
 
 def fig_discovery_loop(out):
-    fig, ax = _blank(10.6, 5.2)
+    fig, ax = blank(10.6, 5.2)
     title(ax, "The discovery loop",
           "The uncited pairs the model scores highly are the output, not the error")
 
@@ -795,24 +730,8 @@ FIGURES = [
 ]
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--out",
-                    default=str(Path(__file__).resolve().parent / "figures"))
-    args = ap.parse_args()
-
-    out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
-
-    for fn in FIGURES:
-        fn(out)
-        print(f"  ok  {fn.__name__}")
-
-    made = sorted(out.glob("*.png"))
-    print(f"\n{len(made)} figures -> {out}")
-    for p in made:
-        print(f"  {p.name:44s} {p.stat().st_size / 1024:7.1f} KB")
+DEFAULT_OUT = Path(__file__).resolve().parent / "figures"
 
 
 if __name__ == "__main__":
-    main()
+    figure_cli(FIGURES, DEFAULT_OUT, description=__doc__)

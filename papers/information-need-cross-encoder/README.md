@@ -13,6 +13,7 @@ trained on author citations.
 | `figures/` | 13 figures, 200 dpi |
 | `make_figures.py` | Regenerates every figure |
 | `make_deck.py` | Regenerates the deck from those figures |
+| [`../figkit.py`](../figkit.py) | Shared palette and drawing primitives |
 
 Reference implementation of the training and evaluation method:
 [`projects/information_need_classification`](../../projects/information_need_classification).
@@ -81,6 +82,38 @@ pdflatex main && pdflatex main  # twice, for the table of contents
 ```
 
 Both scripts are deterministic and take `--out` if you want the output elsewhere.
+
+## Reusing the figure style
+
+Everything visual comes from [`../figkit.py`](../figkit.py), which is meant to be
+shared by any paper in this repository. It holds the palette and five drawing
+primitives, and it depends on matplotlib alone.
+
+The idea that makes block diagrams bearable in matplotlib is `blank()`: it hands
+you an axes that runs 0 to 100 in both directions with the frame switched off, so
+positions read as percentages of the canvas.
+
+```python
+import sys; from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from figkit import blank, box, arrow, title, save, BLUE, BLUE_L
+
+def fig_example(out):
+    fig, ax = blank(10.2, 5.0)                       # inches; axes are 0-100
+    title(ax, "Headline", "optional subtitle")
+    box(ax, 10, 60, 30, 20, "a thing", fc=BLUE_L, ec=BLUE)
+    arrow(ax, (40, 70), (55, 70))                    # rad=0.2 to bend it
+    save(fig, out, "fig01_example")
+```
+
+The deck pulls the same hues through `figkit.rgb()`, so a colour means one thing
+across both artifacts. In this set blue is always the report side and amber
+always the need side, which is most of why thirteen separate drawings read as one
+system.
+
+One working note. Layout collisions are invisible in the source and obvious in
+the rendered PNG, so render, open the image, fix the overlap, and repeat. Every
+layout bug in this set was found that way and none by reading code.
 
 ## Figures
 

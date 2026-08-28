@@ -9,25 +9,55 @@ Usage:
 """
 
 import argparse
+import sys
 from pathlib import Path
 
-from pptx import Presentation
-from pptx.dml.color import RGBColor
-from pptx.enum.shapes import MSO_SHAPE
-from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
-from pptx.util import Inches, Pt
+# figkit lives one level up, in papers/, shared across papers in this repo.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from pptx import Presentation                                # noqa: E402
+from pptx.dml.color import RGBColor                          # noqa: E402
+from pptx.enum.shapes import MSO_SHAPE                       # noqa: E402
+from pptx.enum.text import MSO_ANCHOR, PP_ALIGN              # noqa: E402
+from pptx.util import Inches, Pt                             # noqa: E402
+
+import figkit                                                # noqa: E402
 
 # ---------------------------------------------------------------- style ------
+# Hues come from figkit so a colour means the same thing in the deck as in the
+# figures: blue is the report side, amber the need side, everywhere.
 
-INK = RGBColor(0x11, 0x18, 0x27)
-MUTED = RGBColor(0x6B, 0x72, 0x80)
-BLUE = RGBColor(0x25, 0x63, 0xEB)
-AMBER = RGBColor(0xB4, 0x53, 0x09)
-GREEN = RGBColor(0x04, 0x78, 0x57)
-RED = RGBColor(0xB9, 0x1C, 0x1C)
-VIOLET = RGBColor(0x6D, 0x28, 0xD9)
-WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-SLATE = RGBColor(0xF1, 0xF5, 0xF9)
+
+def C(hexstr) -> RGBColor:
+    """figkit hex -> pptx RGBColor."""
+    return RGBColor(*figkit.rgb(hexstr))
+
+
+INK = C(figkit.INK)
+MUTED = C(figkit.MUTED)
+BLUE = C(figkit.BLUE)
+AMBER = C(figkit.AMBER)
+GREEN = C(figkit.GREEN)
+RED = C(figkit.RED)
+VIOLET = C(figkit.VIOLET)
+WHITE = C(figkit.PAPER)
+SLATE = C(figkit.SLATE_L)
+
+NAVY = C(figkit.INK_DARK)
+GREEN_S = C(figkit.GREEN_S)
+RED_S = C(figkit.RED_S)
+VIOLET_S = C(figkit.VIOLET_S)
+
+BLUE_ON_DARK = C(figkit.BLUE_ON_DARK)
+GREEN_ON_DARK = C(figkit.GREEN_ON_DARK)
+AMBER_ON_DARK = C(figkit.AMBER_ON_DARK)
+VIOLET_ON_DARK = C(figkit.VIOLET_ON_DARK)
+RED_ON_DARK = C(figkit.RED_ON_DARK)
+
+AMBER_DEEP = C(figkit.AMBER_DEEP)
+VIOLET_DEEP = C(figkit.VIOLET_DEEP)
+RED_DEEP = C(figkit.RED_DEEP)
+GREEN_DEEP = C(figkit.GREEN_DEEP)
 
 FONT = "Calibri"
 W, H = 13.333, 7.5          # inches, 16:9
@@ -146,11 +176,11 @@ def build(figs, out):
 
     # ---------------------------------------------------------- 1 title -----
     s = blank(prs)
-    rect(s, 0, 0, W, 2.45, RGBColor(0x0F, 0x17, 0x2A))
+    rect(s, 0, 0, W, 2.45, NAVY)
     text(s, 0.9, 0.62, 11.5, 1.6,
          [("Linking Reports to Information Needs", 38, True, WHITE, 6),
           ("Pairwise attention over reports and need justifications, trained on "
-           "author citations", 17, False, RGBColor(0x93, 0xC5, 0xFD), 0)])
+           "author citations", 17, False, BLUE_ON_DARK, 0)])
     text(s, 0.9, 3.1, 11.5, 2.6,
          [("The method in one sentence", 13, True, BLUE, 8),
           ("Score every (report, need justification) pair with a "
@@ -183,11 +213,11 @@ else follows from that.
         text(s, l + 0.28, 2.4, 3.2, 1.8,
              [(t_, 17, True, c_, 4), (b_, 13, False, INK, 4),
               (m_, 13, True, MUTED, 0)])
-    rect(s, 0.7, 4.75, 11.9, 0.75, RGBColor(0xED, 0xE9, 0xFE), VIOLET)
+    rect(s, 0.7, 4.75, 11.9, 0.75, VIOLET_S, VIOLET)
     text(s, 1.0, 4.87, 11.3, 0.6,
          [("20,000 × 1,000 = 20,000,000 candidate pairs. About 0.15% are cited.",
            15, True, INK, 0)])
-    rect(s, 0.7, 5.75, 11.9, 1.1, RGBColor(0xEC, 0xFD, 0xF5), GREEN)
+    rect(s, 0.7, 5.75, 11.9, 1.1, GREEN_S, GREEN)
     text(s, 1.0, 5.88, 11.3, 0.95,
          [("The goal, both halves", 13, True, GREEN, 3),
           ("Given a new report, return the needs it satisfies. AND surface real "
@@ -219,7 +249,7 @@ counts as an error.
           ("A new need has no output unit, no training data, and no score "
            "until you retrain everything.", 14, False, RED, 5),
           ("Nothing learned transfers to an unseen need.", 14, False, RED, 0)])
-    rect(s, 7.0, 2.1, 5.6, 3.9, RGBColor(0xEC, 0xFD, 0xF5), GREEN)
+    rect(s, 7.0, 2.1, 5.6, 3.9, GREEN_S, GREEN)
     text(s, 7.3, 2.35, 5.0, 3.5,
          [("Ask about the pair instead", 17, True, GREEN, 8),
           ("Feed the report AND a candidate justification into one model.",
@@ -241,12 +271,12 @@ repository changes over time and a fixed output layer cannot follow it.
     # ---------------------------------------------------------- 4 divider ---
     n += 1
     s = blank(prs)
-    rect(s, 0, 0, W, H, RGBColor(0x04, 0x78, 0x57))
+    rect(s, 0, 0, W, H, GREEN)
     text(s, 1.1, 2.9, 11.0, 1.8,
-         [("Part 1", 15, True, RGBColor(0xA7, 0xF3, 0xD0), 8),
+         [("Part 1", 15, True, GREEN_ON_DARK, 8),
           ("Supervised learning", 44, True, WHITE, 8),
           ("Fitting a function to labelled examples", 19, False,
-           RGBColor(0xA7, 0xF3, 0xD0), 0)])
+           GREEN_ON_DARK, 0)])
     notes(s, "Ten minutes on fundamentals. Skip if the room already has this.")
 
     # ---------------------------------------------------------- 5 loop ------
@@ -281,7 +311,7 @@ about the model separately from the training procedure.
         rect(s, l, 2.2, 3.75, 0.09, c_)
         text(s, l + 0.28, 2.45, 3.2, 1.5,
              [(t_, 17, True, c_, 5), (d_, 13, False, INK, 0)])
-    rect(s, 0.7, 4.55, 11.9, 1.85, RGBColor(0xFE, 0xF2, 0xF2), RED)
+    rect(s, 0.7, 4.55, 11.9, 1.85, RED_S, RED)
     text(s, 1.0, 4.8, 11.3, 1.5,
          [("The trap specific to this task", 15, True, RED, 5),
           ("Split by TEXT, not by pair.", 20, True, INK, 4),
@@ -299,12 +329,12 @@ disappoints in production.
     # ---------------------------------------------------------- 7 divider ---
     n += 1
     s = blank(prs)
-    rect(s, 0, 0, W, H, RGBColor(0x92, 0x40, 0x0E))
+    rect(s, 0, 0, W, H, AMBER_DEEP)
     text(s, 1.1, 2.9, 11.0, 1.8,
-         [("Part 2", 15, True, RGBColor(0xFD, 0xE6, 0x8A), 8),
+         [("Part 2", 15, True, AMBER_ON_DARK, 8),
           ("Where the label lives", 44, True, WHITE, 8),
           ("The single design decision the rest of the talk depends on",
-           19, False, RGBColor(0xFD, 0xE6, 0x8A), 0)])
+           19, False, AMBER_ON_DARK, 0)])
     notes(s, "The conceptual core. Slow down here.")
 
     # ---------------------------------------------------------- 8 pairs -----
@@ -346,7 +376,7 @@ mining exists to surface.
            accent=AMBER, kicker="where the labels come from")
     figure(s, figs / "fig11_citation_label_structure.png", 2.0,
            max_w=11.0, max_h=3.9)
-    rect(s, 0.9, 6.05, 11.5, 0.8, RGBColor(0xFE, 0xF2, 0xF2), RED)
+    rect(s, 0.9, 6.05, 11.5, 0.8, RED_S, RED)
     text(s, 1.2, 6.18, 11.0, 0.65,
          [("A citation is a reliable POSITIVE. The absence of a citation is NOT "
            "a negative.", 16, True, INK, 0)])
@@ -430,14 +460,14 @@ confidence -> optional positive weighting. Start without it.
     header(s, "Negative sampling", "With 1,000+ needs at 0.15% density, the "
            "natural balance is about 1 positive to 660 unlabeled",
            accent=AMBER, kicker="building the training set")
-    rect(s, 0.7, 2.35, 11.9, 0.95, RGBColor(0xFE, 0xF2, 0xF2), RED)
+    rect(s, 0.7, 2.35, 11.9, 0.95, RED_S, RED)
     text(s, 1.0, 2.52, 11.3, 0.7,
          [("Train on that directly and the model answers \"no\" to everything. "
            "99.85% accurate. Useless.", 17, True, RED, 0)])
     for i, (t_, d_, c_, bg) in enumerate([
         ("4 hard negatives", "Needs a cheap retriever ranks highly but that are "
          "NOT gold. These sit on the boundary and do the teaching.",
-         RED, RGBColor(0xFE, 0xF2, 0xF2)),
+         RED, RED_S),
         ("4 random negatives", "Uniformly sampled. These stop the model calling "
          "everything vaguely on-topic relevant.", MUTED, SLATE)]):
         l = 0.7 + i * 6.15
@@ -445,7 +475,7 @@ confidence -> optional positive weighting. Start without it.
         text(s, l + 0.3, 3.88, 5.15, 1.4,
              [(t_ + "   per positive", 16, True, c_, 5),
               (d_, 13.5, False, INK, 0)])
-    rect(s, 0.7, 5.75, 11.9, 1.15, RGBColor(0xFE, 0xF2, 0xF2), RED)
+    rect(s, 0.7, 5.75, 11.9, 1.15, RED_S, RED)
     text(s, 1.0, 5.88, 11.3, 0.95,
          [("The tension, stated plainly", 13, True, RED, 3),
           ("A hard negative is a pair the retriever thinks looks relevant. That is "
@@ -472,12 +502,12 @@ consequential decision in the design and it is invisible in the trained weights.
     # ---------------------------------------------------------- 11 divider --
     n += 1
     s = blank(prs)
-    rect(s, 0, 0, W, H, RGBColor(0x5B, 0x21, 0xB6))
+    rect(s, 0, 0, W, H, VIOLET_DEEP)
     text(s, 1.1, 2.9, 11.0, 1.8,
-         [("Part 3", 15, True, RGBColor(0xDD, 0xD6, 0xFE), 8),
+         [("Part 3", 15, True, VIOLET_ON_DARK, 8),
           ("Transformers and attention", 44, True, WHITE, 8),
           ("How a token reads the rest of the sequence", 19, False,
-           RGBColor(0xDD, 0xD6, 0xFE), 0)])
+           VIOLET_ON_DARK, 0)])
     notes(s, "Mechanism section. Build to the attention matrix, which is the payoff.")
 
     # ---------------------------------------------------------- 12 attn -----
@@ -500,12 +530,12 @@ matrix.
     # ---------------------------------------------------------- 13 divider --
     n += 1
     s = blank(prs)
-    rect(s, 0, 0, W, H, RGBColor(0x99, 0x1B, 0x1B))
+    rect(s, 0, 0, W, H, RED_DEEP)
     text(s, 1.1, 2.9, 11.0, 1.8,
-         [("Part 4", 15, True, RGBColor(0xFE, 0xCA, 0xCA), 8),
+         [("Part 4", 15, True, RED_ON_DARK, 8),
           ("Pairwise attention", 44, True, WHITE, 8),
           ("What it actually means, and why it earns its cost", 19, False,
-           RGBColor(0xFE, 0xCA, 0xCA), 0)])
+           RED_ON_DARK, 0)])
     notes(s, "The centre of the talk.")
 
     # ---------------------------------------------------------- 14 input ----
@@ -513,7 +543,7 @@ matrix.
     s = blank(prs)
     header(s, "Build one sequence out of two inputs", accent=RED,
            kicker="pairwise attention")
-    rect(s, 0.7, 2.3, 11.9, 1.15, RGBColor(0x0F, 0x17, 0x2A))
+    rect(s, 0.7, 2.3, 11.9, 1.15, NAVY)
     text(s, 0.95, 2.55, 11.4, 0.8,
          [("[CLS]  <report text>  [SEP]  <need justification>  [SEP]",
            17, True, WHITE, 0)])
@@ -577,7 +607,7 @@ have the same block structure.
     header(s, "The cost of doing it this way", accent=RED,
            kicker="pairwise attention")
     figure(s, figs / "fig04_encoder_comparison.png", 2.0, max_w=10.4, max_h=3.9)
-    rect(s, 0.9, 6.1, 11.5, 0.72, RGBColor(0xEC, 0xFD, 0xF5), GREEN)
+    rect(s, 0.9, 6.1, 11.5, 0.72, GREEN_S, GREEN)
     text(s, 1.2, 6.22, 11.0, 0.6,
          [("We are not choosing. We train the cross-encoder and use a "
            "bi-encoder to decide which pairs are worth scoring.",
@@ -597,7 +627,7 @@ That is the entire cost story, and it is what forces the serving design later.
     header(s, "DistilBERT-MNLI", "Three rounds of training happened before ours",
            accent=VIOLET, kicker="the model")
     figure(s, figs / "fig05_distilbert_mnli.png", 2.1, max_w=11.0, max_h=3.5)
-    rect(s, 0.9, 5.85, 11.5, 1.0, RGBColor(0xED, 0xE9, 0xFE), VIOLET)
+    rect(s, 0.9, 5.85, 11.5, 1.0, VIOLET_S, VIOLET)
     text(s, 1.2, 5.97, 11.0, 0.85,
          [("Why MNLI transfers", 14, True, VIOLET, 3),
           ("MNLI asks whether a premise supports a hypothesis. We ask whether "
@@ -624,12 +654,12 @@ behaviour, which is exactly where the rare needs live.
     # ---------------------------------------------------------- 18 divider --
     n += 1
     s = blank(prs)
-    rect(s, 0, 0, W, H, RGBColor(0x06, 0x5F, 0x46))
+    rect(s, 0, 0, W, H, GREEN_DEEP)
     text(s, 1.1, 2.9, 11.0, 1.8,
-         [("Part 5", 15, True, RGBColor(0xA7, 0xF3, 0xD0), 8),
+         [("Part 5", 15, True, GREEN_ON_DARK, 8),
           ("Training, evaluation, serving", 44, True, WHITE, 8),
           ("The parts that decide whether it works in practice", 19, False,
-           RGBColor(0xA7, 0xF3, 0xD0), 0)])
+           GREEN_ON_DARK, 0)])
     notes(s, "The practical half.")
 
     # ---------------------------------------------------------- 19 pipeline -
@@ -679,7 +709,7 @@ sequence length.
         p.font.name = FONT
         p.font.color.rgb = WHITE
         c.fill.solid()
-        c.fill.fore_color.rgb = RGBColor(0x0F, 0x17, 0x2A)
+        c.fill.fore_color.rgb = NAVY
     for i, (k_, v_) in enumerate(rows, start=1):
         for j, val in enumerate((k_, v_)):
             c = tbl.cell(i, j)
@@ -706,7 +736,7 @@ dropping.
            "Accuracy is unusable. Predicting nothing scores above 99%.",
            accent=GREEN, kicker="evaluation")
     figure(s, figs / "fig08_multilabel_eval.png", 2.0, max_w=10.8, max_h=3.65)
-    rect(s, 0.9, 5.9, 11.5, 0.95, RGBColor(0xEC, 0xFD, 0xF5), GREEN)
+    rect(s, 0.9, 5.9, 11.5, 0.95, GREEN_S, GREEN)
     text(s, 1.2, 6.02, 11.0, 0.8,
          [("The single most informative number is the GAP between micro-F1 and "
            "macro-F1.", 15, True, INK, 2),
@@ -733,7 +763,7 @@ Acted on automatically, favour precision. Tune it on validation, never test.
            "sweep the 20,000-report backlog once",
            accent=BLUE, kicker="serving")
     figure(s, figs / "fig09_serving.png", 2.1, max_w=11.0, max_h=3.55)
-    rect(s, 0.9, 5.9, 11.5, 0.95, RGBColor(0xFE, 0xF2, 0xF2), RED)
+    rect(s, 0.9, 5.9, 11.5, 0.95, RED_S, RED)
     text(s, 1.2, 6.02, 11.0, 0.8,
          [("Stage one sets a hard ceiling on recall.", 15, True, RED, 2),
           ("If the right need is not in the top k, no amount of cross-encoder "
@@ -755,7 +785,7 @@ the best the full system can do, and tuning stage two past that is wasted work.
            "The uncited pairs the model scores highly are the output, not the error",
            accent=VIOLET, kicker="discovery")
     figure(s, figs / "fig13_discovery_loop.png", 2.1, max_w=11.0, max_h=3.7)
-    rect(s, 0.9, 6.0, 11.5, 0.9, RGBColor(0xED, 0xE9, 0xFE), VIOLET)
+    rect(s, 0.9, 6.0, 11.5, 0.9, VIOLET_S, VIOLET)
     text(s, 1.2, 6.12, 11.0, 0.75,
          [("Both verdicts are worth more than a sampled label.", 14.5, True, INK, 2),
           ("YES is a discovery and a new positive edge. NO is a CONFIRMED negative, "
@@ -846,7 +876,7 @@ eventually.
     # ---------------------------------------------------------- 24 close ----
     n += 1
     s = blank(prs)
-    rect(s, 0, 0, W, 2.3, RGBColor(0x0F, 0x17, 0x2A))
+    rect(s, 0, 0, W, 2.3, NAVY)
     text(s, 0.9, 0.72, 11.5, 1.3,
          [("Suggested order of work", 32, True, WHITE, 0)])
     steps = [
@@ -865,7 +895,7 @@ eventually.
              align=PP_ALIGN.CENTER)
         text(s, 1.55, top + 0.04, 10.9, 0.6, [(d_, 14.5, False, INK, 0)])
         top += 0.78
-    rect(s, 0.9, 6.5, 11.5, 0.42, RGBColor(0xFE, 0xF2, 0xF2), RED)
+    rect(s, 0.9, 6.5, 11.5, 0.42, RED_S, RED)
     text(s, 1.2, 6.55, 11.0, 0.35,
          [("Report the micro/macro gap, recall@k, and adjudicated precision@k. "
            "Not the headline F1.", 13.5, True, INK, 0)])
