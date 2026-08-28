@@ -8,12 +8,46 @@ Eight classes and fifty-one types, found by measuring real work.
 |---|---|
 | `main.pdf` | The paper, 9 pages, includes all 51 types with definitions |
 | `main.tex` | LaTeX source |
-| `Hallucination_Taxonomy_Briefing.pptx` | 5 slides plus one marked backup, speaker notes throughout |
-| `figures/` | 4 figures at 200 dpi |
+| `Hallucination_Briefing_Extended.pptx` | **14 slides.** Taxonomy plus six observations, 20 to 25 minutes |
+| `Hallucination_Taxonomy_Briefing.pptx` | 5 slides plus a backup, for a shorter slot |
+| `figures/` | 6 figures at 200 dpi |
 | `figures/taxonomy_snapshot.csv` | Every number on every slide, one row per type |
-| `make_figures.py` | Regenerates the figures from the snapshot |
-| `make_deck.py` | Regenerates the deck from those figures |
+| `make_figures.py`, `make_observation_figures.py` | Regenerate the figures |
+| `make_deck.py`, `make_explore_deck.py` | Regenerate the two decks |
 | [`../figkit.py`](../figkit.py), [`../deckkit.py`](../deckkit.py) | Shared palette and layout primitives |
+
+Both decks carry speaker notes on every slide. The extended one reuses the
+fidelity gradient from [`../compaction-hallucinations`](../compaction-hallucinations),
+so build that directory's figures first if you are regenerating from scratch.
+
+## The extended briefing
+
+Fourteen slides for people who use generative AI in a work role.
+
+**Part 1, the taxonomy.** What a hallucination is, the eight classes, the
+fifty-one types.
+
+**Part 2, six observations.** Each one restates a theory from the project's
+registry, with the identifier on the slide, so nothing here is a claim invented
+for the talk:
+
+| Observation | Theory |
+|---|---|
+| Correcting it can make it worse | T131 Cascading Defensive Fabrication |
+| Corrections stop working after a while | T135 Within-Session Behavioural Saturation |
+| It cannot keep score, you can | T143 Session Discontinuity as Causal Amplifier, T144 Social Consequence Blindness |
+| What it costs depends on when you catch it | T146 Hallucination Consequence and Recovery |
+| It does not get itself unstuck | T160 Persona Basin Absorption, T162 Endogenous Trigger Absence |
+| It forgets its own work, predictably | the compaction fidelity gradient |
+
+**Part 3.** Five practical rules, and the open questions.
+
+One slide sits outside that structure. A generative model helped build these
+materials, and building them produced four of the failures the slides describe:
+re-deriving settled numbers, citing stale documentation as current, building
+something nobody asked for, and shipping a test it had not re-run. Each maps to a
+named type in the taxonomy. The artifacts of the work are evidence for its
+subject, which is worth more to an audience than any chart.
 
 ## The short version
 
